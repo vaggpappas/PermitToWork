@@ -1,0 +1,1325 @@
+{
+  "info": {
+    "_postman_id": "1c7da258-2094-441f-99f8-4b78a6396214",
+    "name": "Permit To Work API",
+    "description": "Integration tests for the Permit To Work API.\n\n**Before running:** start SQL Server (`docker compose up -d sqlserver`), apply migrations, and run the API (`dotnet run --project src/PermitToWork.Api`).\n\n**Postman must be told to accept the local development certificate:** Settings -> General -> SSL certificate verification -> off. Otherwise every request fails with a self-signed certificate error.\n\nRun the whole collection with the Collection Runner, top to bottom. Requests share state through collection variables, so order matters.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:7188"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "contractorToken",
+      "value": ""
+    },
+    {
+      "key": "companyId",
+      "value": ""
+    },
+    {
+      "key": "tradeId",
+      "value": ""
+    },
+    {
+      "key": "certificationTypeId",
+      "value": ""
+    },
+    {
+      "key": "facilityId",
+      "value": ""
+    },
+    {
+      "key": "employeeId",
+      "value": ""
+    },
+    {
+      "key": "certificationId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Smoke test",
+      "description": "Run these first. If Health fails, nothing else will work.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "No token needed. Proves the API is up before anything else is blamed.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('API is up', () => pm.response.to.have.status(200));",
+                  "pm.test('reports healthy', () => pm.expect(pm.response.json().status).to.eql('healthy'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Employees without a token is rejected",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ]
+            },
+            "description": "Every endpoint except health, register and login requires a bearer token.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication",
+      "description": "Log in first. The token is reused by every request below.",
+      "item": [
+        {
+          "name": "Login as administrator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Seeded on first startup. The test script stores the token in a collection variable, so every later request authenticates automatically.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@permittowork.local\",\n  \"password\": \"Admin!23456\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns a token', () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "console.log('Token stored. Expires ' + body.expiresAtUtc);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login with a wrong password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "The message must be the same as for an unknown email, so this endpoint cannot be used to find out who has an account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@permittowork.local\",\n  \"password\": \"definitely-wrong\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('message does not reveal whether the account exists', () =>",
+                  "  pm.expect(pm.response.json().detail).to.eql('Invalid email or password.'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Confirms the token carries the roles and the company scope you expect."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const me = pm.response.json();",
+                  "pm.test('administrator sees every company', () => pm.expect(me.scope).to.eql('all companies'));",
+                  "pm.test('has the Administrator role', () => pm.expect(me.roles).to.include('Administrator'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Reference data",
+      "description": "Fills the collection variables the employee requests depend on. Run in order.",
+      "item": [
+        {
+          "name": "Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/companies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "lookups",
+                "companies"
+              ]
+            },
+            "description": "Stores the contractor company id for the employee we are about to create."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const companies = pm.response.json();",
+                  "pm.test('seeded companies are present', () => pm.expect(companies.length).to.be.above(0));",
+                  "const acme = companies.find(c => c.code === 'ACME') || companies[0];",
+                  "pm.collectionVariables.set('companyId', acme.id);",
+                  "console.log('Using company ' + acme.name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/trades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "lookups",
+                "trades"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const trades = pm.response.json();",
+                  "const welder = trades.find(t => t.code === 'WELD3') || trades[0];",
+                  "pm.collectionVariables.set('tradeId', welder.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Certification types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/certification-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "lookups",
+                "certification-types"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const types = pm.response.json();",
+                  "const hot = types.find(t => t.code === 'HOTWORK') || types[0];",
+                  "pm.collectionVariables.set('certificationTypeId', hot.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Facilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/facilities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "lookups",
+                "facilities"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const facilities = pm.response.json();",
+                  "pm.collectionVariables.set('facilityId', facilities[0].id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Employees",
+      "description": "Create, read, search, update.",
+      "item": [
+        {
+          "name": "Create an employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ]
+            },
+            "description": "Administrators only. The badge number and employer decide what this person can later see, so they are not self-asserted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeNumber\": \"ACME-0042\",\n  \"firstName\": \"Nadia\",\n  \"lastName\": \"Kowalski\",\n  \"email\": \"nadia.kowalski@acme.example\",\n  \"phoneNumber\": \"+30 210 555 0142\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"Welder\",\n  \"hireDate\": \"2021-04-12\",\n  \"dateOfBirth\": \"1990-08-03\",\n  \"address\": {\n    \"street\": \"12 Pireos Street\",\n    \"city\": \"Athens\",\n    \"postalCode\": \"10553\",\n    \"country\": \"Greece\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const created = pm.response.json();",
+                  "pm.collectionVariables.set('employeeId', created.id);",
+                  "pm.test('Location header points at the new record', () =>",
+                  "  pm.expect(pm.response.headers.get('Location')).to.include(created.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create the same badge number again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ]
+            },
+            "description": "Must be a clean 409, not a 500 from the unique index.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeNumber\": \"ACME-0042\",\n  \"firstName\": \"Nadia\",\n  \"lastName\": \"Kowalski\",\n  \"email\": \"someone.else@acme.example\",\n  \"phoneNumber\": \"+30 210 555 0142\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"Welder\",\n  \"hireDate\": \"2021-04-12\",\n  \"dateOfBirth\": \"1990-08-03\",\n  \"address\": {\n    \"street\": \"12 Pireos Street\",\n    \"city\": \"Athens\",\n    \"postalCode\": \"10553\",\n    \"country\": \"Greece\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('says which value clashed', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('ACME-0042'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get the employee",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}"
+              ]
+            },
+            "description": "Age is computed from the date of birth on every read, never stored."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const e = pm.response.json();",
+                  "pm.test('full name is derived', () => pm.expect(e.fullName).to.eql('Nadia Kowalski'));",
+                  "pm.test('age is computed, not stored', () => pm.expect(e.age).to.be.a('number'));",
+                  "pm.test('starts Active', () => pm.expect(e.status).to.eql('Active'));",
+                  "pm.test('has no account until they register', () => pm.expect(e.hasAccount).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search by name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?search=Kowalski&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Kowalski"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const page = pm.response.json();",
+                  "pm.test('finds her', () => pm.expect(page.totalCount).to.be.above(0));",
+                  "pm.test('paging metadata is present', () => pm.expect(page).to.have.property('totalPages'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search by badge number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?search=ACME-0042",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "ACME-0042"
+                }
+              ]
+            },
+            "description": "The badge number is stored through a value converter, so it is matched exactly rather than with LIKE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('exactly one match', () => pm.expect(pm.response.json().totalCount).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Oversized page size is clamped",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?pageSize=100000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "100000"
+                }
+              ]
+            },
+            "description": "PageRequest clamps instead of rejecting, so there is no 'invalid page' error to handle anywhere."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('clamped to 100', () => pm.expect(pm.response.json().pageSize).to.eql(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update the profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Nadia\",\n  \"lastName\": \"Kowalski\",\n  \"email\": \"nadia.kowalski@acme.example\",\n  \"phoneNumber\": \"+30 210 555 0199\",\n  \"jobTitle\": \"Senior Welder\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"dateOfBirth\": \"1990-08-03\",\n  \"address\": {\n    \"street\": \"12 Pireos Street\",\n    \"city\": \"Athens\",\n    \"postalCode\": \"10553\",\n    \"country\": \"Greece\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a malformed email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}"
+              ]
+            },
+            "description": "Caught by DataAnnotations at the edge, before the request reaches the service.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Nadia\",\n  \"lastName\": \"Kowalski\",\n  \"email\": \"not-an-email\",\n  \"jobTitle\": \"Senior Welder\",\n  \"tradeId\": \"{{tradeId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('names the offending field', () =>",
+                  "  pm.expect(Object.keys(pm.response.json().errors)).to.include('Email'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Business rules (the interesting part)",
+      "description": "Each of these proves a rule lives in the domain rather than in a controller.",
+      "item": [
+        {
+          "name": "Reinstate someone who is already active",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/reinstate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}",
+                "reinstate"
+              ]
+            },
+            "description": "The controller contains no status logic at all. Employee.Reinstate() refuses, and the exception handler turns that into 422."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('explains the rule', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('Only a suspended employee'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Suspend them",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/suspend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}",
+                "suspend"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Now reinstating works",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/reinstate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}",
+                "reinstate"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An employee cannot manage themselves",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/manager",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}",
+                "manager"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"managerId\": \"{{employeeId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('explains the rule', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('report to themselves'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add a hot work certification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/certifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}",
+                "certifications"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificationTypeId\": \"{{certificationTypeId}}\",\n  \"issuedBy\": \"Hellenic Welding Institute\",\n  \"issuedOn\": \"2025-01-15\",\n  \"expiresOn\": \"2027-01-15\",\n  \"referenceNumber\": \"HW-99213\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('certificationId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A certification cannot expire before it was issued",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/certifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}",
+                "certifications"
+              ]
+            },
+            "description": "Enforced in the Certification constructor, so this is impossible to store from any code path.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificationTypeId\": \"{{certificationTypeId}}\",\n  \"issuedBy\": \"Hellenic Welding Institute\",\n  \"issuedOn\": \"2027-01-15\",\n  \"expiresOn\": \"2025-01-15\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('explains the rule', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('must expire after'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Certification shows on the employee",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "{{employeeId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const e = pm.response.json();",
+                  "pm.test('one certification recorded', () => pm.expect(e.certifications.length).to.eql(1));",
+                  "pm.test('validity is computed from the dates', () =>",
+                  "  pm.expect(e.certifications[0].isValid).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown employee id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/00000000-0000-0000-0000-000000000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "00000000-0000-0000-0000-000000000001"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Registration",
+      "description": "Registration claims a record an administrator created; it never creates one.",
+      "item": [
+        {
+          "name": "Register against an email with no employee record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Nobody can create their own employee record. An administrator has to enter it first.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"stranger@nowhere.example\",\n  \"password\": \"Str0ng!Passw0rd\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('does not reveal whether the email is known', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('No employee record is awaiting registration'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register as the employee we created",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Claims the existing record and attaches a login to it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nadia.kowalski@acme.example\",\n  \"password\": \"Welder!2345\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns a token', () => pm.expect(body.accessToken).to.be.a('string'));",
+                  "pm.collectionVariables.set('contractorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registering twice is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nadia.kowalski@acme.example\",\n  \"password\": \"Welder!2345\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A weak password is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nadia.kowalski@acme.example\",\n  \"password\": \"short\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Company scoping",
+      "description": "The part worth showing off. Requires folder 6 to have run.",
+      "item": [
+        {
+          "name": "Contractor sees only her own company",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{contractorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Uses the token from registration instead of the administrator's. The EF global query filter narrows every row, with no company check written in any controller."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const page = pm.response.json();",
+                  "pm.test('sees at least herself', () => pm.expect(page.totalCount).to.be.above(0));",
+                  "pm.test('sees nobody from another company', () => {",
+                  "  const others = page.items.filter(i => i.companyName !== 'Acme Maintenance Services');",
+                  "  pm.expect(others, JSON.stringify(others)).to.be.empty;",
+                  "});",
+                  "pm.test('the administrator is hidden from her', () => {",
+                  "  const admins = page.items.filter(i => i.email === 'admin@permittowork.local');",
+                  "  pm.expect(admins).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contractor cannot create employees",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{contractorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeNumber\": \"ACME-0043\",\n  \"firstName\": \"Nadia\",\n  \"lastName\": \"Kowalski\",\n  \"email\": \"x@acme.example\",\n  \"phoneNumber\": \"+30 210 555 0142\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"Welder\",\n  \"hireDate\": \"2021-04-12\",\n  \"dateOfBirth\": \"1990-08-03\",\n  \"address\": {\n    \"street\": \"12 Pireos Street\",\n    \"city\": \"Athens\",\n    \"postalCode\": \"10553\",\n    \"country\": \"Greece\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employees"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Role check, separate from the company scope."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who is the contractor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{contractorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const me = pm.response.json();",
+                  "pm.test('scoped to one company', () => pm.expect(me.scope).to.include('company '));",
+                  "pm.test('has the Employee role only', () => pm.expect(me.roles).to.eql(['Employee']));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
