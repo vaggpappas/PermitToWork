@@ -1,0 +1,38 @@
+## .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+artifacts/
+TestResults/
+*.trx
+*.coverage
+coverage/
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## Visual Studio
+.vs/
+
+## Node / Angular
+node_modules/
+client/dist/
+client/.angular/
+npm-debug.log*
+yarn-error.log*
+
+## Environment & secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+*.pfx
+
+## OS
+.DS_Store
+Thumbs.db

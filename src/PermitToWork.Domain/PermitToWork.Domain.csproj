@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Domain has NO dependencies. Not on EF Core, not on ASP.NET Core, not on NuGet.
+    If you ever feel the need to add one here, that is a signal the concept belongs
+    in Application or Infrastructure instead.
+  -->
+
+</Project>

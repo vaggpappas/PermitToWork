@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PermitToWork.Domain\PermitToWork.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Validation of incoming commands lives with the use cases, not the controllers. -->
+    <PackageReference Include="FluentValidation.AspNetCore" />
+  </ItemGroup>
+
+</Project>
