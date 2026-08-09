@@ -43,6 +43,25 @@ public sealed partial record EmployeeNumber
         return new EmployeeNumber(candidate);
     }
 
+    /// <summary>
+    /// Returns null instead of throwing when the text is not a valid number.
+    /// <para>
+    /// For callers who are asking a question rather than asserting a fact — a search box
+    /// that wants to know whether what the user typed could be a badge number. Using
+    /// <see cref="Create"/> and catching would make an ordinary keystroke an exception.
+    /// </para>
+    /// </summary>
+    public static EmployeeNumber? TryCreate(string? value)
+    {
+        var candidate = value?.Trim().ToUpperInvariant();
+
+        return string.IsNullOrEmpty(candidate)
+               || candidate.Length is < MinLength or > MaxLength
+               || !AllowedCharacters().IsMatch(candidate)
+            ? null
+            : new EmployeeNumber(candidate);
+    }
+
     public override string ToString() => Value;
 
     [GeneratedRegex("^[A-Z0-9-]+$")]

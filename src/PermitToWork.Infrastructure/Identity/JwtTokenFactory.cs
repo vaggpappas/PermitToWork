@@ -22,9 +22,13 @@ internal sealed class JwtTokenFactory(IOptions<JwtOptions> options)
     public (string AccessToken, DateTimeOffset ExpiresAtUtc) Create(
         Guid userId,
         string email,
-        IReadOnlyCollection<string> roles,
+        IEnumerable<string> roles,
         Employee? employee)
     {
+        // Materialised once: the sequence is walked twice below, and IList<string> — what
+        // UserManager.GetRolesAsync hands back — does not implement IReadOnlyCollection<T>.
+        var roleNames = roles as string[] ?? roles.ToArray();
+
         if (string.IsNullOrWhiteSpace(_options.SigningKey))
         {
             throw new InvalidOperationException(
@@ -42,7 +46,7 @@ internal sealed class JwtTokenFactory(IOptions<JwtOptions> options)
 
         // "role" rather than the long WS-Federation URI, matched by RoleClaimType on the
         // validation side. Short, readable in jwt.io, and no claim-type mapping surprises.
-        claims.AddRange(roles.Select(role => new Claim("role", role)));
+        claims.AddRange(roleNames.Select(role => new Claim("role", role)));
 
         if (employee is not null)
         {
@@ -50,7 +54,7 @@ internal sealed class JwtTokenFactory(IOptions<JwtOptions> options)
             claims.Add(new Claim(PermitToWorkClaims.CompanyId, employee.CompanyId.ToString()));
         }
 
-        if (roles.Any(ApplicationRoles.GrantsSiteWideAccess))
+        if (roleNames.Any(ApplicationRoles.GrantsSiteWideAccess))
         {
             claims.Add(new Claim(PermitToWorkClaims.Scope, PermitToWorkClaims.ScopeAllCompanies));
         }

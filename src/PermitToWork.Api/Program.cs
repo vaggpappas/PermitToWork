@@ -1,12 +1,31 @@
 // Microsoft.OpenApi 2.0 (shipped with Swashbuckle 10.x) flattened Microsoft.OpenApi.Models
 // into Microsoft.OpenApi. Older tutorials still show the .Models namespace — it is gone.
+using System.Text.Json.Serialization;
 using Microsoft.OpenApi;
+using PermitToWork.Api.Authentication;
+using PermitToWork.Api.ExceptionHandling;
+using PermitToWork.Application;
+using PermitToWork.Application.Abstractions;
 using PermitToWork.Infrastructure;
+using PermitToWork.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddControllers();
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddAuthorization();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+
+builder.Services.AddControllers()
+    // Enums travel as their names. "Suspended" survives a redeploy that inserts a new
+    // enum member; the number 2 quietly starts meaning something else.
+    .AddJsonOptions(json => json.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -16,6 +35,24 @@ builder.Services.AddSwaggerGen(options =>
         Title = "Permit To Work API",
         Version = "v1",
         Description = "Employee, team and permit-to-work management."
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description = "Paste the token from /api/auth/login. Swagger adds the \"Bearer \" prefix itself."
+    });
+
+    // Swashbuckle v10 takes a factory rather than an object, and the scheme is referenced
+    // through OpenApiSecuritySchemeReference — OpenApiSecurityScheme.Reference is gone.
+    // The scope list must be empty for anything that is not OAuth2.
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
 
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -35,6 +72,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// First in the pipeline: it can only catch what is thrown after it.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -44,9 +84,18 @@ if (app.Environment.IsDevelopment())
     // The API has nothing to serve at the root. In development, send it to the docs
     // rather than a bare 404.
     app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+
+    // Idempotent: every step checks before it writes, so this is safe on every start.
+    await DatabaseSeeder.SeedAsync(app.Services);
 }
 
 app.UseHttpsRedirection();
+
+// Order matters and is not interchangeable: authentication works out who you are,
+// authorisation then decides what you may do. Swapped, every [Authorize] endpoint 401s.
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

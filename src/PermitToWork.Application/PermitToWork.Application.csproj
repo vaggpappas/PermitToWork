@@ -5,8 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Validation of incoming commands lives with the use cases, not the controllers. -->
-    <PackageReference Include="FluentValidation.AspNetCore" />
+    <!-- Needed only for AddApplication(); no other framework dependency belongs here. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
 </Project>

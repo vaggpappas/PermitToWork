@@ -7,9 +7,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using PermitToWork.Application.Abstractions;
 using PermitToWork.Application.Accounts;
 using PermitToWork.Infrastructure.Identity;
 using PermitToWork.Infrastructure.Persistence;
+using PermitToWork.Infrastructure.Persistence.Repositories;
 
 namespace PermitToWork.Infrastructure;
 
@@ -53,6 +55,10 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<JwtTokenFactory>();
+
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
     }
