@@ -1,0 +1,552 @@
+/* Design system.
+   Violet accent, hairline borders, generous radii — following the reference UI.
+
+   Every colour in the application is a custom property defined in one of the two theme
+   blocks below, keyed off `data-theme` on <html>. Nothing further down this file, and no
+   component anywhere, names a colour directly. That is what makes the theme switch a
+   single attribute write rather than a rewrite. */
+
+:root {
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  /* Shape is shared; theme changes colour, and the blocks further down change accent,
+     typeface, text size and density. Each is driven by one data-* attribute on <html>,
+     written by SettingsService. */
+
+  --font-family: Inter, 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+  --base-size: 14.5px;
+  --pad-y: 0.65rem;
+  --pad-card: 1.25rem;
+}
+
+/* ---------- typeface ---------- */
+
+:root[data-font='system'] {
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root[data-font='serif'] {
+  --font-family: Georgia, Cambria, 'Times New Roman', serif;
+}
+
+:root[data-font='mono'] {
+  --font-family: 'Cascadia Code', 'JetBrains Mono', Consolas, 'SF Mono', Menlo, monospace;
+}
+
+/* ---------- text size ---------- */
+
+:root[data-text='small'] {
+  --base-size: 13.5px;
+}
+
+:root[data-text='large'] {
+  --base-size: 16px;
+}
+
+/* ---------- density ---------- */
+
+:root[data-density='compact'] {
+  --pad-y: 0.42rem;
+  --pad-card: 0.9rem;
+}
+
+/* Dark is the default, so a browser that somehow never gets the attribute still renders
+   something coherent rather than unstyled. */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0b0b0e;
+  --sidebar: #101014;
+  --surface: #141418;
+  --surface-raised: #1b1b21;
+  --surface-hover: #202027;
+  --border: #26262e;
+  --border-strong: #33333d;
+  --row-hover: rgb(255 255 255 / 2.5%);
+
+  --text: #ececf1;
+  --text-muted: #9a9aa8;
+  --text-faint: #6e6e7c;
+
+  --accent: #8b5cf6;
+  --accent-strong: #7c3aed;
+  --accent-soft: rgb(139 92 246 / 14%);
+  --accent-border: rgb(139 92 246 / 30%);
+  --accent-text: #c4b5fd;
+  --accent-nav: #ddd6fe;
+
+  --success: #34d399;
+  --success-soft: rgb(52 211 153 / 12%);
+  --success-border: rgb(52 211 153 / 25%);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 12%);
+  --warning-border: rgb(251 191 36 / 25%);
+  --danger: #f87171;
+  --danger-soft: rgb(248 113 113 / 12%);
+  --danger-border: rgb(248 113 113 / 30%);
+  --danger-text: #fca5a5;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  --login-glow: rgb(139 92 246 / 13%);
+
+  color-scheme: dark;
+}
+
+/* Light: the lavender-tinted near-white of the reference landing page. Accents are a step
+   darker than in dark mode — the same violet that reads well on #0b0b0e fails contrast on
+   white. */
+:root[data-theme='light'] {
+  --bg: #f6f5fa;
+  --sidebar: #fff;
+  --surface: #fff;
+  --surface-raised: #f4f3f8;
+  --surface-hover: #eceaf3;
+  --border: #e6e4ee;
+  --border-strong: #d7d4e2;
+  --row-hover: rgb(17 17 27 / 2.5%);
+
+  --text: #17171f;
+  --text-muted: #55556a;
+  --text-faint: #83839a;
+
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
+  --accent-soft: rgb(124 58 237 / 9%);
+  --accent-border: rgb(124 58 237 / 22%);
+  --accent-text: #6d28d9;
+  --accent-nav: #5b21b6;
+
+  --success: #15803d;
+  --success-soft: rgb(34 197 94 / 11%);
+  --success-border: rgb(34 197 94 / 26%);
+  --warning: #b45309;
+  --warning-soft: rgb(245 158 11 / 13%);
+  --warning-border: rgb(245 158 11 / 30%);
+  --danger: #b91c1c;
+  --danger-soft: rgb(239 68 68 / 9%);
+  --danger-border: rgb(239 68 68 / 25%);
+  --danger-text: #b91c1c;
+
+  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 5%);
+  --login-glow: rgb(124 58 237 / 10%);
+
+  color-scheme: light;
+}
+
+/* ---------- accent ---------- */
+/* Overrides the accent set by the theme above. Each pair is tuned per theme, because a
+   colour with enough contrast on #0b0b0e usually has too little on white. */
+
+:root[data-accent='blue'] {
+  --accent: #3b82f6;
+  --accent-strong: #2563eb;
+  --accent-soft: rgb(59 130 246 / 14%);
+  --accent-border: rgb(59 130 246 / 30%);
+  --accent-text: #93c5fd;
+  --accent-nav: #bfdbfe;
+  --login-glow: rgb(59 130 246 / 13%);
+}
+
+:root[data-theme='light'][data-accent='blue'] {
+  --accent: #1d4ed8;
+  --accent-strong: #1e40af;
+  --accent-soft: rgb(29 78 216 / 9%);
+  --accent-border: rgb(29 78 216 / 22%);
+  --accent-text: #1e40af;
+  --accent-nav: #1e3a8a;
+  --login-glow: rgb(29 78 216 / 10%);
+}
+
+:root[data-accent='emerald'] {
+  --accent: #10b981;
+  --accent-strong: #059669;
+  --accent-soft: rgb(16 185 129 / 14%);
+  --accent-border: rgb(16 185 129 / 30%);
+  --accent-text: #6ee7b7;
+  --accent-nav: #a7f3d0;
+  --login-glow: rgb(16 185 129 / 13%);
+}
+
+:root[data-theme='light'][data-accent='emerald'] {
+  --accent: #047857;
+  --accent-strong: #065f46;
+  --accent-soft: rgb(4 120 87 / 9%);
+  --accent-border: rgb(4 120 87 / 22%);
+  --accent-text: #065f46;
+  --accent-nav: #064e3b;
+  --login-glow: rgb(4 120 87 / 10%);
+}
+
+:root[data-accent='amber'] {
+  --accent: #f59e0b;
+  --accent-strong: #d97706;
+  --accent-soft: rgb(245 158 11 / 14%);
+  --accent-border: rgb(245 158 11 / 30%);
+  --accent-text: #fcd34d;
+  --accent-nav: #fde68a;
+  --login-glow: rgb(245 158 11 / 13%);
+}
+
+:root[data-theme='light'][data-accent='amber'] {
+  --accent: #b45309;
+  --accent-strong: #92400e;
+  --accent-soft: rgb(180 83 9 / 10%);
+  --accent-border: rgb(180 83 9 / 24%);
+  --accent-text: #92400e;
+  --accent-nav: #78350f;
+  --login-glow: rgb(180 83 9 / 10%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: var(--base-size);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  margin: 0 0 0.15rem;
+}
+
+h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.9rem;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #ddd6fe;
+  text-decoration: underline;
+}
+
+/* ---------- layout ---------- */
+
+.page {
+  max-width: 1180px;
+  padding: 1.75rem 2rem 4rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card) calc(var(--pad-card) + 0.1rem);
+  margin-bottom: 1.1rem;
+}
+
+.grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ---------- forms ---------- */
+
+label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Marks a field the form will not submit without. Added by the template rather than
+   inferred, so the asterisk and the validator are decided in the same place. */
+label.required::after {
+  content: ' *';
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.legend {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin: 0 0 1rem;
+}
+
+.legend .star {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input::placeholder {
+  color: var(--text-faint);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input.invalid,
+select.invalid {
+  border-color: var(--danger);
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin: 0.3rem 0 0;
+}
+
+/* ---------- buttons ---------- */
+
+button {
+  font: inherit;
+  font-weight: 500;
+  padding: 0.52rem 0.95rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: var(--surface-raised);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+button.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+button.link {
+  background: none;
+  border: none;
+  color: var(--accent-text);
+  padding: 0;
+  font-weight: 500;
+}
+
+button.link:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+
+button.small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+/* ---------- table ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--pad-y) 0.7rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  border-bottom-color: var(--border-strong);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--row-hover);
+}
+
+td select {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+  width: auto;
+}
+
+/* ---------- badges ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+}
+
+.badge.active,
+.badge.valid {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.badge.suspended,
+.badge.expired {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.badge.terminated,
+.badge.disbanded {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.badge.leader {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+}
+
+/* ---------- alerts ---------- */
+
+.alert {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  border: 1px solid;
+  font-size: 0.9rem;
+}
+
+.alert.error {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
+.alert.info {
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+/* ---------- misc ---------- */
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-faint);
+  font-size: 0.92rem;
+}
+
+dl.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.1rem 1.5rem;
+  margin: 0;
+}
+
+dl.facts dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+dl.facts dd {
+  margin: 0;
+}

@@ -1,3 +1,5 @@
+using PermitToWork.Domain.Organization;
+
 namespace PermitToWork.Infrastructure.Identity;
 
 /// <summary>
@@ -32,24 +34,27 @@ public static class PermitToWorkClaims
 }
 
 /// <summary>
-/// The four application roles. Constants rather than loose strings because a typo in
+/// Role names as strings, for <c>[Authorize(Roles = …)]</c>.
+/// <para>
+/// Constants rather than loose strings because a typo in
 /// <c>[Authorize(Roles = "Adminstrator")]</c> does not fail to compile — it fails to
-/// authorise, silently, in production.
+/// authorise, silently. Each one matches a member of
+/// <see cref="Domain.Organization.AccessRole"/> exactly, which is where the value actually
+/// lives; these are only the spelling used in the token and the attributes.
+/// </para>
 /// </summary>
 public static class ApplicationRoles
 {
-    public const string Administrator = "Administrator";
-    public const string SafetyOfficer = "SafetyOfficer";
-    public const string Supervisor = "Supervisor";
-    public const string Employee = "Employee";
-
-    public static readonly IReadOnlyList<string> All =
-        [Administrator, SafetyOfficer, Supervisor, Employee];
+    public const string Administrator = nameof(AccessRole.Administrator);
+    public const string SafetyOfficer = nameof(AccessRole.SafetyOfficer);
+    public const string Supervisor = nameof(AccessRole.Supervisor);
+    public const string Responsible = nameof(AccessRole.Responsible);
+    public const string Employee = nameof(AccessRole.Employee);
 
     /// <summary>
-    /// The roles whose holders see every company's data. Everyone else is scoped to their
-    /// own employer, contractor or not.
+    /// Who sees every company's data. Everyone else is scoped to their own employer,
+    /// contractor or not.
     /// </summary>
-    public static bool GrantsSiteWideAccess(string role) =>
-        role is Administrator or SafetyOfficer;
+    public static bool GrantsSiteWideAccess(AccessRole role) =>
+        role is AccessRole.Administrator or AccessRole.SafetyOfficer;
 }

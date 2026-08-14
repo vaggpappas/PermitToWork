@@ -1,0 +1,194 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Employees</h1>
+      <p class="subtitle">
+        @if (auth.seesAllCompanies()) {
+          Every company on site.
+        } @else {
+          Limited to your own company's records.
+        }
+      </p>
+    </div>
+
+    @if (canCreate) {
+      <button type="button" (click)="showCreate.set(!showCreate())">
+        {{ showCreate() ? 'Cancel' : 'New employee' }}
+      </button>
+    }
+  </div>
+
+  @if (showCreate()) {
+    <form class="card" [formGroup]="createForm" (ngSubmit)="create()">
+      <h2>New employee</h2>
+
+      @if (createError()) {
+        <div class="alert error">{{ createError() }}</div>
+      }
+
+      <p class="legend"><span class="star">*</span> required</p>
+
+      <div class="grid">
+        <div>
+          <label for="firstName" class="required">First name</label>
+          <input id="firstName" formControlName="firstName" />
+        </div>
+        <div>
+          <label for="lastName" class="required">Last name</label>
+          <input id="lastName" formControlName="lastName" />
+        </div>
+        <div>
+          <label for="email" class="required">Email</label>
+          <input id="email" type="email" formControlName="email" />
+        </div>
+        <div>
+          <label for="phoneNumber">Phone</label>
+          <input id="phoneNumber" formControlName="phoneNumber" />
+        </div>
+        <div>
+          <label for="companyId" class="required">Company</label>
+          <select id="companyId" formControlName="companyId">
+            <option value="">Choose…</option>
+            @for (company of companies(); track company.id) {
+              <option [value]="company.id">{{ company.name }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label for="tradeId" class="required">Trade</label>
+          <select id="tradeId" formControlName="tradeId">
+            <option value="">Choose…</option>
+            @for (trade of trades(); track trade.id) {
+              <option [value]="trade.id">{{ trade.name }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label for="jobTitle" class="required">Job title</label>
+          <input id="jobTitle" formControlName="jobTitle" placeholder="Senior Welder" />
+        </div>
+        <div>
+          <label for="hireDate" class="required">Hire date</label>
+          <input id="hireDate" type="date" formControlName="hireDate" />
+        </div>
+        <div>
+          <label for="dateOfBirth">Date of birth</label>
+          <input id="dateOfBirth" type="date" formControlName="dateOfBirth" />
+        </div>
+      </div>
+
+      <p class="muted" style="margin: 0.75rem 0">
+        The badge number is generated from the company code once you save. The trade is the
+        craft that decides what work they may be assigned; the job title is descriptive only.
+        Everyone starts read-only — set their role from their profile afterwards.
+      </p>
+
+      <button type="submit" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : 'Create employee' }}
+      </button>
+    </form>
+  }
+
+  <form class="card" [formGroup]="filters" (ngSubmit)="applyFilters()">
+    <div class="row">
+      <div style="flex: 2; min-width: 220px">
+        <label for="search">Search</label>
+        <input id="search" formControlName="search" placeholder="Name, badge number or email" />
+      </div>
+      <div style="flex: 1; min-width: 150px">
+        <label for="status">Status</label>
+        <select id="status" formControlName="status">
+          <option value="">Any</option>
+          <option value="Active">Active</option>
+          <option value="Suspended">Suspended</option>
+          <option value="Terminated">Terminated</option>
+        </select>
+      </div>
+      @if (auth.seesAllCompanies()) {
+        <div style="flex: 1; min-width: 170px">
+          <label for="companyId">Company</label>
+          <select id="companyId" formControlName="companyId">
+            <option value="">Any</option>
+            @for (company of companies(); track company.id) {
+              <option [value]="company.id">{{ company.name }}</option>
+            }
+          </select>
+        </div>
+      }
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  }
+
+  <div class="card">
+    @if (loading()) {
+      <p class="empty">Loading…</p>
+    } @else if (result(); as page) {
+      @if (page.items.length === 0) {
+        <p class="empty">No employees match those filters.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Badge</th>
+              <th>Name</th>
+              <th>Trade</th>
+              <th>Job title</th>
+              <th>Company</th>
+              <th>Status</th>
+              <th>Role</th>
+              <th>Account</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (employee of page.items; track employee.id) {
+              <tr>
+                <td>{{ employee.employeeNumber }}</td>
+                <td><a [routerLink]="['/employees', employee.id]">{{ employee.fullName }}</a></td>
+                <td>{{ employee.tradeName }}</td>
+                <td>{{ employee.jobTitle }}</td>
+                <td>{{ employee.companyName }}</td>
+                <td><span class="badge {{ employee.status.toLowerCase() }}">{{ employee.status }}</span></td>
+                <td>
+                  @if (employee.accessRole === 'Employee') {
+                    <span class="muted">—</span>
+                  } @else {
+                    <span class="badge leader">{{ employee.accessRole }}</span>
+                  }
+                </td>
+                <td class="muted">{{ employee.hasAccount ? 'Registered' : '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="row" style="margin-top: 1rem; align-items: center">
+          <span class="muted">
+            {{ page.totalCount }} employee{{ page.totalCount === 1 ? '' : 's' }} · page
+            {{ page.page }} of {{ page.totalPages }}
+          </span>
+          <span class="spacer"></span>
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!page.hasPreviousPage"
+            (click)="goToPage(page.page - 1)"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!page.hasNextPage"
+            (click)="goToPage(page.page + 1)"
+          >
+            Next
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>

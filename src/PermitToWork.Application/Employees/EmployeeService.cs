@@ -20,6 +20,8 @@ public interface IEmployeeService
 
     Task ChangeStatusAsync(Guid id, EmploymentAction action, CancellationToken cancellationToken = default);
 
+    Task AssignAccessRoleAsync(Guid id, AccessRole role, CancellationToken cancellationToken = default);
+
     Task<Guid> AddCertificationAsync(Guid id, AddCertificationRequest request, CancellationToken cancellationToken = default);
 
     Task RemoveCertificationAsync(Guid id, Guid certificationId, CancellationToken cancellationToken = default);
@@ -51,16 +53,10 @@ public sealed class EmployeeService(
 
     public async Task<Guid> CreateAsync(CreateEmployeeRequest request, CancellationToken cancellationToken = default)
     {
-        // Value objects first: if the number or email is malformed, nothing else matters
-        // and the caller gets one clear message instead of a database constraint error.
-        var number = EmployeeNumber.Create(request.EmployeeNumber);
+        // Value objects first: if the email is malformed, nothing else matters and the
+        // caller gets one clear message instead of a database constraint error.
         var name = PersonName.Create(request.FirstName, request.LastName);
         var contact = ContactInfo.Create(request.Email, request.PhoneNumber);
-
-        if (await employees.NumberIsTakenAsync(number, cancellationToken))
-        {
-            throw new ConflictException($"Employee number '{number}' is already in use.");
-        }
 
         if (await employees.EmailIsTakenAsync(contact.Email, cancellationToken: cancellationToken))
         {
@@ -76,6 +72,9 @@ public sealed class EmployeeService(
         {
             throw new NotFoundException(nameof(Trade), request.TradeId);
         }
+
+        // Generated after the company is known to exist, since the badge carries its code.
+        var number = await employees.NextNumberAsync(request.CompanyId, cancellationToken);
 
         var employee = new Employee(
             number,
@@ -167,6 +166,15 @@ public sealed class EmployeeService(
                 throw new DomainException($"Unknown employment action '{action}'.");
         }
 
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task AssignAccessRoleAsync(Guid id, AccessRole role, CancellationToken cancellationToken = default)
+    {
+        var employee = await RequireAsync(id, cancellationToken);
+
+        // The aggregate refuses to give a role to somebody who has been terminated.
+        employee.AssignAccessRole(role);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 

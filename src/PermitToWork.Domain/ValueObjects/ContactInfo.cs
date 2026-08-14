@@ -27,7 +27,13 @@ public sealed record ContactInfo
 
         // MailAddress rather than a hand-rolled regex: email grammar is genuinely hard and
         // every regex found online gets some real address wrong.
-        if (!MailAddress.TryCreate(candidate, out _))
+        //
+        // The second half of this check is not optional. MailAddress also parses the
+        // "Display Name <someone@example.com>" form, so "two spaces@here.local" succeeds
+        // with DisplayName "two" and Address "spaces@here.local" — and we would then store
+        // the whole original string as the email. Requiring the parsed address to equal
+        // the input is what rejects anything with a display name, stray spaces included.
+        if (!MailAddress.TryCreate(candidate, out var parsed) || parsed.Address != candidate)
         {
             throw new DomainException($"'{candidate}' is not a valid email address.");
         }

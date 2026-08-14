@@ -19,16 +19,20 @@ internal sealed class JwtTokenFactory(IOptions<JwtOptions> options)
 {
     private readonly JwtOptions _options = options.Value;
 
+    /// <summary>
+    /// Issues a token for a login.
+    /// <para>
+    /// The role comes from the employee record, not from a role table — so changing what
+    /// somebody may do is one field on one row, and there is no second place that can
+    /// disagree with it. A login with no employee record gets no role at all, which is
+    /// correct: it can authenticate but do nothing.
+    /// </para>
+    /// </summary>
     public (string AccessToken, DateTimeOffset ExpiresAtUtc) Create(
         Guid userId,
         string email,
-        IEnumerable<string> roles,
         Employee? employee)
     {
-        // Materialised once: the sequence is walked twice below, and IList<string> — what
-        // UserManager.GetRolesAsync hands back — does not implement IReadOnlyCollection<T>.
-        var roleNames = roles as string[] ?? roles.ToArray();
-
         if (string.IsNullOrWhiteSpace(_options.SigningKey))
         {
             throw new InvalidOperationException(
@@ -44,19 +48,19 @@ internal sealed class JwtTokenFactory(IOptions<JwtOptions> options)
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString())
         };
 
-        // "role" rather than the long WS-Federation URI, matched by RoleClaimType on the
-        // validation side. Short, readable in jwt.io, and no claim-type mapping surprises.
-        claims.AddRange(roleNames.Select(role => new Claim("role", role)));
-
         if (employee is not null)
         {
             claims.Add(new Claim(PermitToWorkClaims.EmployeeId, employee.Id.ToString()));
             claims.Add(new Claim(PermitToWorkClaims.CompanyId, employee.CompanyId.ToString()));
-        }
 
-        if (roleNames.Any(ApplicationRoles.GrantsSiteWideAccess))
-        {
-            claims.Add(new Claim(PermitToWorkClaims.Scope, PermitToWorkClaims.ScopeAllCompanies));
+            // "role" rather than the long WS-Federation URI, matched by RoleClaimType on
+            // the validation side. Short, readable in jwt.io, no claim-mapping surprises.
+            claims.Add(new Claim("role", employee.AccessRole.ToString()));
+
+            if (ApplicationRoles.GrantsSiteWideAccess(employee.AccessRole))
+            {
+                claims.Add(new Claim(PermitToWorkClaims.Scope, PermitToWorkClaims.ScopeAllCompanies));
+            }
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));

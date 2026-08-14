@@ -1,0 +1,64 @@
+@if (auth.isAuthenticated()) {
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="identity">
+        <span class="avatar">{{ initial() }}</span>
+        <span class="identity-text">
+          <strong [class.accented]="settings.accentUserName()">{{ auth.email() }}</strong>
+          <small>{{ primaryRole() }}</small>
+        </span>
+        <app-theme-toggle />
+      </div>
+
+      <nav>
+        <p class="nav-section">Workspace</p>
+
+        <a routerLink="/teams" routerLinkActive="active">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+            />
+          </svg>
+          Teams
+        </a>
+
+        <a routerLink="/employees" routerLinkActive="active">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          Employees
+        </a>
+
+        <p class="nav-section">Permits</p>
+        <span class="nav-soon">Coming in phase 2</span>
+      </nav>
+
+      <div class="sidebar-footer">
+        @if (!auth.seesAllCompanies()) {
+          <p class="scope-note" title="A query filter limits every request to your own company">
+            Scoped to your company
+          </p>
+        }
+
+        <a routerLink="/settings" routerLinkActive="active" class="footer-action">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5 8.9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9.5a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"
+            />
+          </svg>
+          Settings
+        </a>
+
+        <button type="button" class="secondary small" (click)="auth.logout()">Sign out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+} @else {
+  <router-outlet />
+}

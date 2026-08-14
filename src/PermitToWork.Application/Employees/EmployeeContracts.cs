@@ -25,6 +25,7 @@ public sealed record EmployeeSummaryDto(
     string TradeName,
     string CompanyName,
     EmploymentStatus Status,
+    AccessRole AccessRole,
     bool HasAccount)
 {
     public string FullName => $"{FirstName} {LastName}";
@@ -64,6 +65,7 @@ public sealed record EmployeeDetailDto(
     string? ManagerName,
     DateOnly HireDate,
     EmploymentStatus Status,
+    AccessRole AccessRole,
     bool HasAccount,
     IReadOnlyList<CertificationDto> Certifications)
 {
@@ -108,8 +110,9 @@ public sealed record EmployeeSearchRequest : PageRequest
 
 public sealed record CreateEmployeeRequest
 {
-    [Required, StringLength(20, MinimumLength = 3)]
-    public string EmployeeNumber { get; init; } = string.Empty;
+    // No badge number: it is generated from the company code and a per-company sequence.
+    // Leaving it off the request is what makes it impossible to set, rather than a rule
+    // written down somewhere that a future endpoint forgets.
 
     [Required, StringLength(80)]
     public string FirstName { get; init; } = string.Empty;
@@ -195,6 +198,12 @@ public enum EmploymentAction
     Suspend = 1,
     Reinstate = 2,
     Terminate = 3
+}
+
+public sealed record AssignAccessRoleRequest
+{
+    [Required]
+    public AccessRole AccessRole { get; init; }
 }
 
 #endregion

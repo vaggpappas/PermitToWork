@@ -42,6 +42,7 @@ public class Employee : Entity
         JobTitle = Guard.Required(jobTitle, "Job title", 120);
         HireDate = hireDate;
         Status = EmploymentStatus.Active;
+        AccessRole = AccessRole.Employee;
     }
 
     #region Identity and profile
@@ -67,6 +68,13 @@ public class Employee : Entity
 
     public DateOnly HireDate { get; private set; }
     public EmploymentStatus Status { get; private set; }
+
+    /// <summary>
+    /// What this person may do. Everyone starts read-only; a supervisor or administrator
+    /// raises it deliberately. Defaulting to anything else would mean a new record is a
+    /// standing invitation to change data nobody meant to grant.
+    /// </summary>
+    public AccessRole AccessRole { get; private set; }
 
     /// <summary>
     /// The Identity account, once they have registered. Null for people an administrator
@@ -124,6 +132,25 @@ public class Employee : Entity
         ManagerId = managerId;
     }
 
+    /// <summary>
+    /// Raises or lowers what this person may do.
+    /// <para>
+    /// A terminated employee cannot hold anything above <see cref="AccessRole.Employee"/>.
+    /// Otherwise someone who left last year would keep the ability to reorganise teams for
+    /// as long as their token lived — and access that outlives employment is the kind of
+    /// thing an audit finds rather than a person.
+    /// </para>
+    /// </summary>
+    public void AssignAccessRole(AccessRole role)
+    {
+        if (Status is EmploymentStatus.Terminated && role is not AccessRole.Employee)
+        {
+            throw new DomainException("A terminated employee cannot be given an access role.");
+        }
+
+        AccessRole = role;
+    }
+
     /// <summary>Links a login to this person. One-way: accounts are never silently reassigned.</summary>
     public void LinkToUser(Guid userId)
     {
@@ -167,6 +194,11 @@ public class Employee : Entity
         }
 
         Status = EmploymentStatus.Terminated;
+
+        // Ending employment ends the privileges that came with it, here rather than in a
+        // checklist somebody has to remember. Revoking access is not a separate task the
+        // caller can forget — it is part of what terminating means.
+        AccessRole = AccessRole.Employee;
     }
 
     #endregion

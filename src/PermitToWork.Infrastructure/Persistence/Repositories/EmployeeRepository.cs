@@ -7,7 +7,7 @@ using PermitToWork.Domain.ValueObjects;
 
 namespace PermitToWork.Infrastructure.Persistence.Repositories;
 
-internal sealed class EmployeeRepository(PermitToWorkDbContext context) : IEmployeeRepository
+internal sealed class EmployeeRepository(PermitToWorkDbContext context, CounterStore counters) : IEmployeeRepository
 {
     public Task<Employee?> FindAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.Employees
@@ -86,6 +86,7 @@ internal sealed class EmployeeRepository(PermitToWorkDbContext context) : IEmplo
                     t.Name,
                     c.Name,
                     e.Status,
+                    e.AccessRole,
                     e.UserId != null))
             .ToListAsync(cancellationToken);
 
@@ -155,8 +156,28 @@ internal sealed class EmployeeRepository(PermitToWorkDbContext context) : IEmplo
             row.ManagerName,
             employee.HireDate,
             employee.Status,
+            employee.AccessRole,
             employee.UserId is not null,
             certifications);
+    }
+
+    public async Task<EmployeeNumber> NextNumberAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var companyCode = await context.Companies
+            .Where(c => c.Id == companyId)
+            .Select(c => c.Code)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException($"Company '{companyId}' does not exist.");
+
+        // One sequence per company, so ACME and OWNER count independently. Taken from the
+        // counters table rather than from MAX(EmployeeNumber): the sequence is a fact of
+        // its own, and reading the current maximum is a race waiting for two people to
+        // click Create at the same moment.
+        var next = await counters.NextAsync($"employee:{companyCode}", cancellationToken);
+
+        // Zero-padded to four digits so the numbers line up when read, and so that sorting
+        // them as text still gives the right order.
+        return EmployeeNumber.Create($"{companyCode}-{next:D4}");
     }
 
     // Uniqueness is a property of the whole table, not of what the caller may see.

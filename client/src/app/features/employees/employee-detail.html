@@ -1,0 +1,328 @@
+<div class="page">
+  @if (loading()) {
+    <p class="empty">Loading…</p>
+  } @else if (error()) {
+    <div class="alert error">{{ error() }}</div>
+    <a routerLink="/employees">Back to employees</a>
+  } @else if (employee(); as person) {
+    <div class="page-header">
+      <div>
+        <h1>{{ person.fullName }}</h1>
+        <p class="subtitle">
+          {{ person.employeeNumber }} · {{ person.tradeName }} · {{ person.companyName }}
+          <span class="badge {{ person.status.toLowerCase() }}">{{ person.status }}</span>
+        </p>
+      </div>
+
+      <div class="row">
+        @if (canManage) {
+          <button type="button" class="secondary" (click)="editing() ? editing.set(false) : startEditing()">
+            {{ editing() ? 'Cancel' : 'Edit profile' }}
+          </button>
+        }
+        @if (canAdminister) {
+          @if (person.status === 'Active') {
+            <button type="button" class="secondary" [disabled]="busy()" (click)="suspend()">Suspend</button>
+          }
+          @if (person.status === 'Suspended') {
+            <button type="button" class="secondary" [disabled]="busy()" (click)="reinstate()">Reinstate</button>
+          }
+          @if (person.status !== 'Terminated') {
+            <button type="button" class="danger" [disabled]="busy()" (click)="terminate()">Terminate</button>
+          }
+        }
+      </div>
+    </div>
+
+    @if (actionError()) {
+      <div class="alert error">{{ actionError() }}</div>
+    }
+
+    @if (editing()) {
+      <form class="card" [formGroup]="editForm" (ngSubmit)="save()">
+        <h2>Edit profile</h2>
+        <div class="grid">
+          <div>
+            <label for="firstName" class="required">First name</label>
+            <input id="firstName" formControlName="firstName" />
+          </div>
+          <div>
+            <label for="lastName" class="required">Last name</label>
+            <input id="lastName" formControlName="lastName" />
+          </div>
+          <div>
+            <label for="email" class="required">Email</label>
+            <input id="email" type="email" formControlName="email" />
+          </div>
+          <div>
+            <label for="phoneNumber">Phone</label>
+            <input id="phoneNumber" formControlName="phoneNumber" />
+          </div>
+          <div>
+            <label for="jobTitle" class="required">Job title</label>
+            <input id="jobTitle" formControlName="jobTitle" />
+          </div>
+          <div>
+            <label for="tradeId" class="required">Trade</label>
+            <select id="tradeId" formControlName="tradeId">
+              @for (trade of trades(); track trade.id) {
+                <option [value]="trade.id">{{ trade.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="dateOfBirth">Date of birth</label>
+            <input id="dateOfBirth" type="date" formControlName="dateOfBirth" />
+          </div>
+        </div>
+
+        <h2 style="margin-top: 1.25rem">Address</h2>
+        <p class="muted" style="margin-top: -0.5rem">
+          Optional — but all four fields or none. A half-filled address looks like data and
+          is not, so the server rejects it.
+        </p>
+        <div class="grid">
+          <div>
+            <label for="street">Street</label>
+            <input id="street" formControlName="street" />
+          </div>
+          <div>
+            <label for="city">City</label>
+            <input id="city" formControlName="city" />
+          </div>
+          <div>
+            <label for="postalCode">Postal code</label>
+            <input id="postalCode" formControlName="postalCode" />
+          </div>
+          <div>
+            <label for="country">Country</label>
+            <input id="country" formControlName="country" />
+          </div>
+        </div>
+
+        <button type="submit" style="margin-top: 1rem" [disabled]="busy()">
+          {{ busy() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </form>
+    } @else {
+      <div class="card">
+        <h2>Profile</h2>
+        <dl class="facts">
+          <div>
+            <dt>Email</dt>
+            <dd>{{ person.email }}</dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd>{{ person.phoneNumber ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Job title</dt>
+            <dd>{{ person.jobTitle }}</dd>
+          </div>
+          <div>
+            <dt>Reports to</dt>
+            <dd>{{ person.managerName ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Hired</dt>
+            <dd>{{ person.hireDate | date: settings.dateFormat() }}</dd>
+          </div>
+          <div>
+            <dt>Age</dt>
+            <dd>
+              @if (person.age !== null) {
+                {{ person.age }}
+                <span class="muted">(computed from date of birth)</span>
+              } @else {
+                —
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Address</dt>
+            <dd>
+              @if (person.address; as address) {
+                {{ address.street }}, {{ address.postalCode }} {{ address.city }}, {{ address.country }}
+              } @else {
+                —
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Account</dt>
+            <dd>{{ person.hasAccount ? 'Registered' : 'Not yet registered' }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Access role</h2>
+        <p class="muted" style="margin: -0.5rem 0 0.9rem">
+          What this person may do in the application. Everyone starts read-only. Terminating
+          somebody clears their role automatically.
+        </p>
+
+        @if (canAssignRole && person.status !== 'Terminated') {
+          <div class="row" style="align-items: center">
+            <div style="min-width: 240px">
+              <label for="accessRole">Role</label>
+              <select
+                id="accessRole"
+                [value]="person.accessRole"
+                [disabled]="busy()"
+                (change)="assignAccessRole($any($event.target).value)"
+              >
+                @for (role of accessRoles; track role.value) {
+                  <option [value]="role.value">{{ role.label }} — {{ role.hint }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        } @else {
+          <p style="margin: 0">
+            <span class="badge {{ person.accessRole === 'Employee' ? '' : 'leader' }}">
+              {{ person.accessRole }}
+            </span>
+            @if (person.status === 'Terminated') {
+              <span class="muted"> · terminated employees hold no role</span>
+            }
+          </p>
+        }
+      </div>
+    }
+
+    <div class="card">
+      <div class="row" style="margin-bottom: 0.75rem">
+        <h2 style="margin: 0">Certifications</h2>
+        <span class="spacer"></span>
+        @if (canCertify) {
+          <button
+            type="button"
+            class="secondary small"
+            (click)="addingCertification.set(!addingCertification())"
+          >
+            {{ addingCertification() ? 'Cancel' : 'Add certification' }}
+          </button>
+        }
+      </div>
+
+      @if (addingCertification()) {
+        <form [formGroup]="certificationForm" (ngSubmit)="addCertification()" style="margin-bottom: 1rem">
+          <div class="grid">
+            <div>
+              <label for="certificationTypeId" class="required">Type</label>
+              <select id="certificationTypeId" formControlName="certificationTypeId">
+                <option value="">Choose…</option>
+                @for (type of certificationTypes(); track type.id) {
+                  <option [value]="type.id">{{ type.name }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="issuedBy" class="required">Issued by</label>
+              <input id="issuedBy" formControlName="issuedBy" />
+            </div>
+            <div>
+              <label for="issuedOn" class="required">Issued on</label>
+              <input id="issuedOn" type="date" formControlName="issuedOn" />
+            </div>
+            <div>
+              <label for="expiresOn" class="required">Expires on</label>
+              <input id="expiresOn" type="date" formControlName="expiresOn" />
+            </div>
+            <div>
+              <label for="referenceNumber">Reference</label>
+              <input id="referenceNumber" formControlName="referenceNumber" />
+            </div>
+          </div>
+          <button type="submit" style="margin-top: 0.75rem" [disabled]="busy()">Record certification</button>
+        </form>
+      }
+
+      @if (person.certifications.length === 0) {
+        <p class="empty">No certifications recorded.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Issued by</th>
+              <th>Issued</th>
+              <th>Expires</th>
+              <th>Reference</th>
+              <th></th>
+              @if (canCertify) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (certification of person.certifications; track certification.id) {
+              <tr>
+                <td>{{ certification.certificationTypeName }}</td>
+                <td>{{ certification.issuedBy }}</td>
+                <td>{{ certification.issuedOn | date: settings.dateFormat() }}</td>
+                <td>{{ certification.expiresOn | date: settings.dateFormat() }}</td>
+                <td class="muted">{{ certification.referenceNumber ?? '—' }}</td>
+                <td>
+                  <span class="badge {{ certification.isValid ? 'valid' : 'expired' }}">
+                    {{ certification.isValid ? 'Valid' : 'Expired' }}
+                  </span>
+                </td>
+                @if (canCertify) {
+                  <td>
+                    <button
+                      type="button"
+                      class="link small"
+                      [disabled]="busy()"
+                      (click)="removeCertification(certification.id)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="muted" style="margin-bottom: 0">
+          Renewals are added rather than overwritten, so the record of who was qualified when
+          survives.
+        </p>
+      }
+    </div>
+
+    <div class="card">
+      <h2>Teams</h2>
+      @if (teams().length === 0) {
+        <p class="empty">Not currently in any team.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Team</th>
+              <th>Facility</th>
+              <th>Leader</th>
+              <th>Members</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (team of teams(); track team.id) {
+              <tr>
+                <td>{{ team.code }}</td>
+                <td><a [routerLink]="['/teams', team.id]">{{ team.name }}</a></td>
+                <td>{{ team.facilityName }}</td>
+                <td>{{ team.leaderName ?? '—' }}</td>
+                <td>{{ team.activeMemberCount }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <a routerLink="/employees">← Back to employees</a>
+  }
+</div>

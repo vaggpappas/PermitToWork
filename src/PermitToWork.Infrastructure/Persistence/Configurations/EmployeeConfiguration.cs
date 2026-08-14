@@ -59,6 +59,7 @@ internal sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(e => e.HireDate).IsRequired();
         builder.Property(e => e.DateOfBirth);
         builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(e => e.AccessRole).HasConversion<string>().HasMaxLength(20).IsRequired();
 
         builder.HasOne<Company>()
             .WithMany()

@@ -14,7 +14,7 @@ namespace PermitToWork.Infrastructure.Persistence;
 /// a second connection string and a second transaction to keep in step.
 /// </para>
 /// </summary>
-public class PermitToWorkDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
+public class PermitToWorkDbContext : IdentityUserContext<ApplicationUser, Guid>
 {
     private readonly bool _seesEveryCompany;
     private readonly Guid _companyScope;
@@ -51,11 +51,14 @@ public class PermitToWorkDbContext : IdentityDbContext<ApplicationUser, Applicat
 
         builder.HasDefaultSchema("org");
 
-        // Identity's eight tables would otherwise sprawl across the domain schema.
+        // Identity's tables would otherwise sprawl across the domain schema. There are four
+        // of them rather than the usual eight, because this context derives from
+        // IdentityUserContext instead of IdentityDbContext — no roles, no user-roles, no
+        // role-claims. Roles live on Employee.AccessRole, so those tables would only be a
+        // second place for the same fact to be wrong in.
         foreach (var entityType in builder.Model.GetEntityTypes()
                      .Where(t => t.ClrType.Namespace?.StartsWith("Microsoft.AspNetCore.Identity") is true
-                                 || t.ClrType == typeof(ApplicationUser)
-                                 || t.ClrType == typeof(ApplicationRole)))
+                                 || t.ClrType == typeof(ApplicationUser)))
         {
             entityType.SetSchema("identity");
         }

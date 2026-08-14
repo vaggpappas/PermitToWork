@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Permit To Work</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b0e">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Inter, matching the reference UI. Preconnect so the font is not a render-blocking
+       round trip on first paint. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Runs before the first paint, so a light-theme user never sees a dark flash while
+       Angular boots. ThemeService reads the same key and takes over from here. -->
+  <script>
+    (function () {
+      var root = document.documentElement;
+      try {
+        var saved = JSON.parse(localStorage.getItem('ptw.settings') || '{}');
+        root.dataset.theme = saved.theme
+          || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        root.dataset.accent = saved.accent || 'violet';
+        root.dataset.font = saved.font || 'inter';
+        root.dataset.text = saved.textSize || 'medium';
+        root.dataset.density = saved.density || 'comfortable';
+      } catch (e) {
+        root.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

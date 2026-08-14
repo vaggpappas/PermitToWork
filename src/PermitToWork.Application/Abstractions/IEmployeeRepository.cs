@@ -25,6 +25,15 @@ public interface IEmployeeRepository
         EmployeeSearchRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The next free badge number for a company — <c>ACME-0001</c>, <c>ACME-0002</c>.
+    /// <para>
+    /// Generated rather than typed, because a badge number the user chooses is a badge
+    /// number the user gets wrong, and it is the identifier everything else hangs off.
+    /// </para>
+    /// </summary>
+    Task<EmployeeNumber> NextNumberAsync(Guid companyId, CancellationToken cancellationToken = default);
+
     Task<bool> NumberIsTakenAsync(EmployeeNumber number, CancellationToken cancellationToken = default);
 
     Task<bool> EmailIsTakenAsync(string email, Guid? exceptEmployeeId = null, CancellationToken cancellationToken = default);

@@ -1,0 +1,169 @@
+<div class="page">
+  @if (loading()) {
+    <p class="empty">Loading…</p>
+  } @else if (error()) {
+    <div class="alert error">{{ error() }}</div>
+    <a routerLink="/teams">Back to teams</a>
+  } @else if (team(); as crew) {
+    <div class="page-header">
+      <div>
+        <h1>{{ crew.name }}</h1>
+        <p class="subtitle">
+          {{ crew.code }} · {{ crew.facilityName }}
+          <span class="badge {{ crew.status.toLowerCase() }}">{{ crew.status }}</span>
+        </p>
+        @if (crew.description) {
+          <p class="muted">{{ crew.description }}</p>
+        }
+      </div>
+
+      <div class="row">
+        @if (canManage && crew.status === 'Active') {
+          <button type="button" class="secondary" (click)="addingMember.set(!addingMember())">
+            {{ addingMember() ? 'Cancel' : 'Add member' }}
+          </button>
+        }
+        @if (canDisband && crew.status === 'Active') {
+          <button type="button" class="danger" [disabled]="busy()" (click)="disband()">Disband</button>
+        }
+      </div>
+    </div>
+
+    @if (actionError()) {
+      <div class="alert error">{{ actionError() }}</div>
+    }
+
+    @if (addingMember()) {
+      <form class="card" [formGroup]="memberForm" (ngSubmit)="addMember()">
+        <h2>Add a member</h2>
+        <div class="row">
+          <div style="flex: 2; min-width: 240px">
+            <label for="employeeId" class="required">Employee</label>
+            <select id="employeeId" formControlName="employeeId">
+              <option value="">Choose…</option>
+              @for (employee of addableEmployees(); track employee.id) {
+                <option [value]="employee.id">
+                  {{ employee.fullName }} — {{ employee.tradeName }} ({{ employee.companyName }})
+                </option>
+              }
+            </select>
+          </div>
+          <div style="flex: 1; min-width: 140px">
+            <label for="role" class="required">Role</label>
+            <select id="role" formControlName="role">
+              <option value="Member">Member</option>
+              <option value="Deputy">Deputy</option>
+              <option value="Leader">Leader</option>
+            </select>
+          </div>
+          <button type="submit" [disabled]="busy()">Add</button>
+        </div>
+        <p class="muted" style="margin-bottom: 0">
+          A team has at most one leader at a time. Promoting a second one is refused by the
+          server.
+        </p>
+      </form>
+    }
+
+    <div class="card">
+      <h2>Current members ({{ currentMembers().length }})</h2>
+
+      @if (currentMembers().length === 0) {
+        <p class="empty">Nobody is currently on this team.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Badge</th>
+              <th>Name</th>
+              <th>Trade</th>
+              <th>Company</th>
+              <th>Role</th>
+              <th>Joined</th>
+              @if (canManage && crew.status === 'Active') {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (member of currentMembers(); track member.membershipId) {
+              <tr>
+                <td>{{ member.employeeNumber }}</td>
+                <td><a [routerLink]="['/employees', member.employeeId]">{{ member.fullName }}</a></td>
+                <td>{{ member.tradeName }}</td>
+                <td>{{ member.companyName }}</td>
+                <td>
+                  @if (canManage && crew.status === 'Active') {
+                    <select
+                      [value]="member.role"
+                      [disabled]="busy()"
+                      (change)="changeRole(member.employeeId, $any($event.target).value)"
+                    >
+                      <option value="Member">Member</option>
+                      <option value="Deputy">Deputy</option>
+                      <option value="Leader">Leader</option>
+                    </select>
+                  } @else {
+                    <span class="badge {{ member.role === 'Leader' ? 'leader' : '' }}">{{ member.role }}</span>
+                  }
+                </td>
+                <td>{{ member.joinedOn | date: settings.dateFormat() }}</td>
+                @if (canManage && crew.status === 'Active') {
+                  <td>
+                    <button
+                      type="button"
+                      class="link small"
+                      [disabled]="busy()"
+                      (click)="removeMember(member.employeeId, member.fullName)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (!auth.seesAllCompanies()) {
+          <p class="muted" style="margin-bottom: 0">
+            This team has {{ crew.activeMemberCount }} members in total. You can see the
+            {{ currentMembers().length }} from your own company.
+          </p>
+        }
+      }
+    </div>
+
+    @if (pastMembers().length > 0) {
+      <div class="card">
+        <h2>Past members</h2>
+        <p class="muted" style="margin-top: -0.5rem">
+          Memberships are ended, never deleted — who was on the crew on a given day is the
+          first thing an incident investigation asks.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Left</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (member of pastMembers(); track member.membershipId) {
+              <tr>
+                <td><a [routerLink]="['/employees', member.employeeId]">{{ member.fullName }}</a></td>
+                <td>{{ member.role }}</td>
+                <td>{{ member.joinedOn | date: settings.dateFormat() }}</td>
+                <td>{{ member.leftOn | date: settings.dateFormat() }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <a routerLink="/teams">← Back to teams</a>
+  }
+</div>

@@ -50,13 +50,16 @@ public static class DependencyInjection
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
-            .AddRoles<ApplicationRole>()
+            // No AddRoles: there are no Identity role tables. Employee.AccessRole is the
+            // single source of truth and the token's role claim is issued from it.
             .AddEntityFrameworkStores<PermitToWorkDbContext>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<JwtTokenFactory>();
 
+        services.AddScoped<CounterStore>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<ITeamRepository, TeamRepository>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

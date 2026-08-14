@@ -1,0 +1,134 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Settings</h1>
+      <p class="subtitle">
+        These are yours alone — stored in this browser, never sent to the server, and not
+        visible to anyone else.
+      </p>
+    </div>
+    <button type="button" class="secondary" (click)="settings.resetToDefaults()">Reset to defaults</button>
+  </div>
+
+  <div class="card">
+    <h2>Theme</h2>
+    <p class="muted setting-hint">Defaults to your operating system until you choose here.</p>
+    <div class="options">
+      @for (choice of themes; track choice.value) {
+        <button
+          type="button"
+          class="option"
+          [class.selected]="settings.theme() === choice.value"
+          (click)="settings.theme.set(choice.value)"
+        >
+          <strong>{{ choice.label }}</strong>
+          <small>{{ choice.hint }}</small>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Accent colour</h2>
+    <p class="muted setting-hint">
+      Used for the active menu item, buttons and links — and for your name in the sidebar,
+      if you leave that switched on below.
+    </p>
+    <div class="swatches">
+      @for (choice of accents; track choice.value) {
+        <button
+          type="button"
+          class="swatch"
+          [attr.data-accent-preview]="choice.value"
+          [class.selected]="settings.accent() === choice.value"
+          [title]="choice.label"
+          (click)="settings.accent.set(choice.value)"
+        >
+          <span class="dot"></span>
+          {{ choice.label }}
+        </button>
+      }
+    </div>
+
+    <label class="switch-row">
+      <input
+        type="checkbox"
+        [checked]="settings.accentUserName()"
+        (change)="settings.accentUserName.set($any($event.target).checked)"
+      />
+      Show my name in the accent colour
+    </label>
+  </div>
+
+  <div class="card">
+    <h2>Typeface</h2>
+    <div class="options">
+      @for (choice of fonts; track choice.value) {
+        <button
+          type="button"
+          class="option"
+          [class.selected]="settings.font() === choice.value"
+          (click)="settings.font.set(choice.value)"
+        >
+          <strong>{{ choice.label }}</strong>
+          <small>{{ choice.hint }}</small>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Text size</h2>
+    <div class="options">
+      @for (choice of textSizes; track choice.value) {
+        <button
+          type="button"
+          class="option"
+          [class.selected]="settings.textSize() === choice.value"
+          (click)="settings.textSize.set(choice.value)"
+        >
+          <strong>{{ choice.label }}</strong>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Density</h2>
+    <p class="muted setting-hint">How much padding tables and cards use.</p>
+    <div class="options">
+      @for (choice of densities; track choice.value) {
+        <button
+          type="button"
+          class="option"
+          [class.selected]="settings.density() === choice.value"
+          (click)="settings.density.set(choice.value)"
+        >
+          <strong>{{ choice.label }}</strong>
+          <small>{{ choice.hint }}</small>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Date format</h2>
+    <p class="muted setting-hint">
+      Applies to dates the application writes. The calendar pickers in forms follow your
+      browser's language instead — that one is not ours to set.
+    </p>
+    <div class="options">
+      @for (choice of dateFormats; track choice.value) {
+        <button
+          type="button"
+          class="option"
+          [class.selected]="settings.dateFormat() === choice.value"
+          (click)="settings.dateFormat.set(choice.value)"
+        >
+          <strong>{{ choice.label }}</strong>
+          <small>{{ choice.hint }}</small>
+        </button>
+      }
+    </div>
+  </div>
+</div>

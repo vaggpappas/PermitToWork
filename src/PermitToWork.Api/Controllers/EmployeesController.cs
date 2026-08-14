@@ -47,6 +47,24 @@ public sealed class EmployeesController(IEmployeeService employees) : Controller
         return CreatedAtAction(nameof(Get), new { id }, new { id });
     }
 
+    /// <summary>
+    /// Sets what this person may do. Supervisors and administrators only — this is the
+    /// field that grants every other permission, so it is itself the most restricted one.
+    /// </summary>
+    /// <response code="422">They have been terminated, and cannot hold a role.</response>
+    [HttpPut("{id:guid}/access-role")]
+    [Authorize(Roles = $"{ApplicationRoles.Administrator},{ApplicationRoles.Supervisor}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> AssignAccessRole(
+        Guid id,
+        AssignAccessRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        await employees.AssignAccessRoleAsync(id, request.AccessRole, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Updates the profile fields a person is allowed to change.</summary>
     [HttpPut("{id:guid}")]
     [Authorize(Roles = $"{ApplicationRoles.Administrator},{ApplicationRoles.Supervisor}")]

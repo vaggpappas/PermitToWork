@@ -28,24 +28,12 @@ public static class DatabaseSeeder
 
         var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(DatabaseSeeder));
         var context = provider.GetRequiredService<PermitToWorkDbContext>();
-        var roleManager = provider.GetRequiredService<RoleManager<ApplicationRole>>();
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var configuration = provider.GetRequiredService<IConfiguration>();
 
-        await SeedRolesAsync(roleManager);
+        // No roles to seed: they are a value on the employee record, not rows in a table.
         var (company, facility, trade) = await SeedReferenceDataAsync(context, cancellationToken);
         await SeedAdministratorAsync(context, userManager, configuration, company, trade, logger, cancellationToken);
-    }
-
-    private static async Task SeedRolesAsync(RoleManager<ApplicationRole> roleManager)
-    {
-        foreach (var role in ApplicationRoles.All)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                await roleManager.CreateAsync(new ApplicationRole(role));
-            }
-        }
     }
 
     private static async Task<(Company Company, Facility Facility, Trade Trade)> SeedReferenceDataAsync(
@@ -130,12 +118,15 @@ public static class DatabaseSeeder
             return;
         }
 
-        await userManager.AddToRoleAsync(user, ApplicationRoles.Administrator);
+        // Through the same counter the API uses, so the first employee created afterwards
+        // gets 0002 rather than colliding with this one.
+        var sequence = await new CounterStore(context).NextAsync($"employee:{company.Code}", cancellationToken);
 
         // The administrator gets an employee record like everyone else, so that the
-        // "who created this permit" trail points at a person rather than at a bare login.
+        // "who created this permit" trail points at a person rather than at a bare login —
+        // and because the record is where the access role lives.
         var employee = new Employee(
-            EmployeeNumber.Create("EMP-00001"),
+            EmployeeNumber.Create($"{company.Code}-{sequence:D4}"),
             PersonName.Create("System", "Administrator"),
             ContactInfo.Create(email, null),
             company.Id,
@@ -143,6 +134,7 @@ public static class DatabaseSeeder
             "System Administrator",
             DateOnly.FromDateTime(DateTime.UtcNow));
 
+        employee.AssignAccessRole(AccessRole.Administrator);
         employee.LinkToUser(user.Id);
         context.Employees.Add(employee);
         await context.SaveChangesAsync(cancellationToken);

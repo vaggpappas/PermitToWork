@@ -66,14 +66,15 @@ internal sealed class AccountService(
             return AuthenticationResult.Failure(created.Errors.Select(e => e.Description).ToArray());
         }
 
-        await userManager.AddToRoleAsync(user, ApplicationRoles.Employee);
-
+        // No role is granted here. The employee record already carries one — set by whoever
+        // created it — and registering a login does not change what a person may do.
+        //
         // The domain refuses a second link, so a race between two registrations for the
         // same email ends in a DomainException rather than a silently stolen account.
         employee.LinkToUser(user.Id);
         await context.SaveChangesAsync(cancellationToken);
 
-        return await IssueTokenAsync(user, employee);
+        return IssueToken(user, employee);
     }
 
     public async Task<AuthenticationResult> LoginAsync(
@@ -94,13 +95,12 @@ internal sealed class AccountService(
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(e => e.UserId == user.Id, cancellationToken);
 
-        return await IssueTokenAsync(user, employee);
+        return IssueToken(user, employee);
     }
 
-    private async Task<AuthenticationResult> IssueTokenAsync(ApplicationUser user, Employee? employee)
+    private AuthenticationResult IssueToken(ApplicationUser user, Employee? employee)
     {
-        var roles = await userManager.GetRolesAsync(user);
-        var (accessToken, expiresAt) = tokenFactory.Create(user.Id, user.Email!, roles, employee);
+        var (accessToken, expiresAt) = tokenFactory.Create(user.Id, user.Email!, employee);
 
         return AuthenticationResult.Success(accessToken, expiresAt);
     }

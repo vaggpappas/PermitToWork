@@ -1,0 +1,118 @@
+.setting-hint {
+  margin: -0.5rem 0 0.9rem;
+}
+
+.options {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-width: 150px;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  white-space: normal;
+}
+
+.option:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.option strong {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.option small {
+  color: var(--text-faint);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+/* ---------- accent swatches ---------- */
+
+.swatches {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.swatch:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.swatch.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* The preview dot has to show the colour it would switch to, so these are the only
+   hard-coded colours in the application — a swatch that used var(--accent) would show the
+   current accent four times. */
+.swatch[data-accent-preview='violet'] .dot {
+  background: #8b5cf6;
+}
+
+.swatch[data-accent-preview='blue'] .dot {
+  background: #3b82f6;
+}
+
+.swatch[data-accent-preview='emerald'] .dot {
+  background: #10b981;
+}
+
+.swatch[data-accent-preview='amber'] .dot {
+  background: #f59e0b;
+}
+
+/* ---------- switch ---------- */
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1.1rem 0 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.switch-row input {
+  width: auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
