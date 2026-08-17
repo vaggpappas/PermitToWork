@@ -122,7 +122,13 @@
           </div>
           <div>
             <dt>Reports to</dt>
-            <dd>{{ person.managerName ?? '—' }}</dd>
+            <dd>
+              @if (person.managerId) {
+                <a [routerLink]="['/employees', person.managerId]">{{ person.managerName }}</a>
+              } @else {
+                —
+              }
+            </dd>
           </div>
           <div>
             <dt>Hired</dt>
@@ -190,6 +196,85 @@
           </p>
         }
       </div>
+
+      @if (canManage && person.status !== 'Terminated') {
+        <div class="card">
+          <div class="row" style="margin-bottom: 0.75rem">
+            <h2 style="margin: 0">Reporting line</h2>
+            <span class="spacer"></span>
+            <button
+              type="button"
+              class="secondary small"
+              (click)="editingManager() ? editingManager.set(false) : openManagerEditor()"
+            >
+              {{ editingManager() ? 'Cancel' : 'Change' }}
+            </button>
+          </div>
+
+          <p style="margin: 0">
+            @if (person.managerId) {
+              Reports to
+              <a [routerLink]="['/employees', person.managerId]">{{ person.managerName }}</a>
+            } @else {
+              <span class="muted">Reports to nobody.</span>
+            }
+          </p>
+
+          @if (editingManager()) {
+            <form [formGroup]="managerForm" (ngSubmit)="findManagers()" style="margin-top: 1rem">
+              <div class="row">
+                <div style="flex: 2; min-width: 220px">
+                  <label for="managerSearch">Find a colleague</label>
+                  <input id="managerSearch" formControlName="search" placeholder="Name or badge number" />
+                </div>
+                <button type="submit" class="secondary">Search</button>
+              </div>
+
+              @if (managerSearched()) {
+                @if (managerCandidates().length === 0) {
+                  <p class="empty" style="margin-bottom: 0">
+                    Nobody active matches that. A person cannot report to themselves, so they
+                    are never in this list.
+                  </p>
+                } @else {
+                  <div class="row" style="align-items: flex-end; margin-top: 0.75rem">
+                    <div style="flex: 2; min-width: 240px">
+                      <label for="managerId">Manager</label>
+                      <select id="managerId" formControlName="managerId">
+                        <option value="">Choose…</option>
+                        @for (candidate of managerCandidates(); track candidate.id) {
+                          <option [value]="candidate.id">
+                            {{ candidate.fullName }} — {{ candidate.jobTitle }} ({{ candidate.companyName }})
+                          </option>
+                        }
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      [disabled]="busy() || !managerForm.controls.managerId.value"
+                      (click)="saveManager()"
+                    >
+                      Save
+                    </button>
+                  </div>
+                }
+              }
+
+              @if (person.managerId) {
+                <button
+                  type="button"
+                  class="link small"
+                  style="margin-top: 0.75rem"
+                  [disabled]="busy()"
+                  (click)="clearManager()"
+                >
+                  Clear the reporting line
+                </button>
+              }
+            </form>
+          }
+        </div>
+      }
     }
 
     <div class="card">

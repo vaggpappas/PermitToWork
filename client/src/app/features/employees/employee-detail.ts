@@ -6,7 +6,14 @@ import { Observable } from 'rxjs';
 import { EmployeesApi } from '../../core/api/employees.api';
 import { LookupsApi } from '../../core/api/teams.api';
 import { AuthService, Roles } from '../../core/auth/auth.service';
-import { AccessRole, AccessRoles, EmployeeDetail as Employee, Lookup, TeamSummary } from '../../core/models';
+import {
+  AccessRole,
+  AccessRoles,
+  EmployeeDetail as Employee,
+  EmployeeSummary,
+  Lookup,
+  TeamSummary,
+} from '../../core/models';
 import { describeError } from '../../core/problem-details';
 import { SettingsService } from '../../core/settings/settings.service';
 
@@ -58,6 +65,22 @@ export class EmployeeDetail {
     city: '',
     postalCode: '',
     country: '',
+  });
+
+  /**
+   * The reporting line.
+   *
+   * This searches rather than listing everybody, and that is not a stylistic choice: the
+   * employee endpoint clamps its page size to 100, so a plain dropdown would silently omit
+   * the 101st person and look complete while doing it. A search box cannot mislead in that
+   * way — an empty result says "no match", not "no such colleague".
+   */
+  protected readonly editingManager = signal(false);
+  protected readonly managerCandidates = signal<EmployeeSummary[]>([]);
+  protected readonly managerSearched = signal(false);
+  protected readonly managerForm = this.formBuilder.nonNullable.group({
+    search: '',
+    managerId: '',
   });
 
   protected readonly addingCertification = signal(false);
@@ -139,6 +162,52 @@ export class EmployeeDetail {
 
   protected assignAccessRole(role: string): void {
     this.run(this.employees.assignAccessRole(this.id(), role as AccessRole));
+  }
+
+  protected openManagerEditor(): void {
+    this.managerForm.reset();
+    this.managerCandidates.set([]);
+    this.managerSearched.set(false);
+    this.editingManager.set(true);
+
+    // Open with the first page already listed. Making the user press Search against an empty
+    // box to discover there are colleagues at all is a worse first impression than showing
+    // some, and it costs one request either way.
+    this.findManagers();
+  }
+
+  protected findManagers(): void {
+    this.employees
+      .search({
+        search: this.managerForm.controls.search.value,
+        // Only people still employed here. Someone who left last year is not a reporting
+        // line, and offering them invites a mistake the server would have to refuse.
+        status: 'Active',
+        pageSize: 50,
+      })
+      .subscribe({
+        next: (page) => {
+          // The server refuses a self-assignment anyway; removing it from the list means the
+          // user never gets to make a choice that is going to be rejected.
+          this.managerCandidates.set(page.items.filter((candidate) => candidate.id !== this.id()));
+          this.managerSearched.set(true);
+        },
+        error: (failure: unknown) => this.actionError.set(describeError(failure)),
+      });
+  }
+
+  protected saveManager(): void {
+    const managerId = this.managerForm.controls.managerId.value;
+    if (!managerId) {
+      return;
+    }
+
+    this.run(this.employees.assignManager(this.id(), managerId), () => this.editingManager.set(false));
+  }
+
+  /** Null is the payload, not an omission — it is how the API says "reports to nobody". */
+  protected clearManager(): void {
+    this.run(this.employees.assignManager(this.id(), null), () => this.editingManager.set(false));
   }
 
   protected suspend(): void {
