@@ -13,8 +13,14 @@ export function describeError(error: unknown): string {
     return 'Something went wrong.';
   }
 
-  if (error.status === 0) {
-    return 'Cannot reach the API. Is it running on https://localhost:7188?';
+  // Two different ways of saying the same thing, depending on who noticed first.
+  //
+  // 0 is the browser: the request never got a response at all. 502 and 504 are the Angular
+  // dev-server proxy: it is running, forwarded the call to https://localhost:7188, and found
+  // nothing there. Reporting that as "Request failed (502)" sends people looking for a
+  // problem with their password, which is the one thing it is never about.
+  if (error.status === 0 || error.status === 502 || error.status === 504) {
+    return 'Cannot reach the API. Is it running? Start it with: dotnet run --project src/PermitToWork.Api';
   }
 
   const body = error.error;

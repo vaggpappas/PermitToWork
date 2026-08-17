@@ -56,11 +56,16 @@ describe('describeError', () => {
   });
 
   it('explains an unreachable API instead of showing a zero', () => {
-    const result = describeError(problem(0, null));
+    // Status 0 is the browser saying the request never got a response at all.
+    expect(describeError(problem(0, null))).toContain('Cannot reach the API');
+  });
 
-    // Status 0 is the browser saying the request never arrived. During development that is
-    // almost always the API not running, so the message says so and gives the address.
-    expect(result).toContain('Cannot reach the API');
+  it('treats a dead proxy target the same as an unreachable API', () => {
+    // 502 is the Angular dev server saying it forwarded the call and found nothing behind
+    // it. Same cause, different messenger. Shown as "Request failed (502)" it reads like a
+    // rejected login, which sends people to check a password that was never the problem.
+    expect(describeError(problem(502, null))).toContain('Cannot reach the API');
+    expect(describeError(problem(504, null))).toContain('Cannot reach the API');
   });
 
   it('does not render an arbitrary thrown value as [object Object]', () => {
