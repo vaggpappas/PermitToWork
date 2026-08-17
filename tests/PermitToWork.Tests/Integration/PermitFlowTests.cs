@@ -99,6 +99,53 @@ public sealed class PermitFlowTests(ApiFactory api)
     }
 
     [RequiresDatabaseFact]
+    public async Task APersonsPermits_IncludeTheOnesTheyReceive_AndExcludeEverybodyElses()
+    {
+        var client = await api.SignInAsAdministratorAsync();
+        var run = Guid.NewGuid().ToString("N")[..8];
+
+        var (companyId, tradeId, _) = await ReferenceDataAsync(client);
+        var (_, categoryId, locationId) = await PermitReferenceAsync(client);
+
+        var receiver = await CreateEmployeeAsync(client, $"recv.{run}@example.test", companyId, tradeId, "Welder");
+        var bystander = await CreateEmployeeAsync(client, $"else.{run}@example.test", companyId, tradeId, "Fitter");
+
+        // Cold Work requires no certification, so this exercises the assignment filter
+        // without dragging the certification rule into it.
+        var coldWork = await ColdWorkTypeAsync(client);
+
+        var created = await client.PostAsJsonAsync("/api/permits", new
+        {
+            permitTypeId = coldWork,
+            categoryId,
+            workDescription = "Replace the gasket on the transfer pump.",
+            locationId,
+            validFrom = DateTimeOffset.UtcNow.AddDays(1),
+            validTo = DateTimeOffset.UtcNow.AddDays(2),
+            receiverId = receiver,
+        });
+
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var permitId = await IdOfAsync(created);
+
+        // The Receiver was never added to the crew, and still has to see it: they are the
+        // person accountable for the work actually happening.
+        var theirs = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/permits/assigned-to/{receiver}?order=Schedule", Json);
+
+        theirs.GetProperty("items").EnumerateArray()
+            .Select(item => item.GetProperty("id").GetGuid())
+            .Should().Contain(permitId);
+
+        var somebodyElses = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/permits/assigned-to/{bystander}", Json);
+
+        somebodyElses.GetProperty("items").EnumerateArray()
+            .Select(item => item.GetProperty("id").GetGuid())
+            .Should().NotContain(permitId);
+    }
+
+    [RequiresDatabaseFact]
     public async Task BadgeNumbers_AreHandedOutWithoutColliding()
     {
         var client = await api.SignInAsAdministratorAsync();
@@ -184,6 +231,9 @@ public sealed class PermitFlowTests(ApiFactory api)
             categories[0].GetProperty("id").GetGuid(),
             locations[0].GetProperty("id").GetGuid());
     }
+
+    private static async Task<Guid> ColdWorkTypeAsync(HttpClient client) =>
+        FindByCode(await client.GetFromJsonAsync<JsonElement>("/api/permit-types", Json), "CW");
 
     private static Guid FindByCode(JsonElement items, string code) =>
         items.EnumerateArray()

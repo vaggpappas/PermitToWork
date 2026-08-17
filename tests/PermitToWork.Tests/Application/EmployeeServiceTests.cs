@@ -24,11 +24,16 @@ public class EmployeeServiceTests
     private readonly IReferenceDataRepository _referenceData = Substitute.For<IReferenceDataRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
+    // Only the self-service methods read this, and none of the tests below are about them —
+    // the "is it really my own record" question is answered over HTTP in the integration
+    // suite, where a real token decides who the caller is.
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+
     private readonly EmployeeService _service;
 
     public EmployeeServiceTests()
     {
-        _service = new EmployeeService(_employees, _referenceData, _unitOfWork);
+        _service = new EmployeeService(_employees, _referenceData, _currentUser, _unitOfWork);
 
         // The happy path by default; each test spoils exactly the one thing it is about.
         _referenceData.CompanyExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);

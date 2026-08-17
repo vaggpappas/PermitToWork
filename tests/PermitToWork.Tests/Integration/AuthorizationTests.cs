@@ -63,6 +63,31 @@ public sealed class AuthorizationTests(ApiFactory api)
     }
 
     [RequiresDatabaseFact]
+    public async Task AnOrdinaryEmployee_CannotSearchAnotherPersonsPermits()
+    {
+        var client = await SignInAsPlainEmployeeAsync();
+
+        var response = await client.GetAsync($"/api/permits/assigned-to/{Guid.NewGuid()}");
+
+        // Their own assignments are theirs to see. Where a *colleague* is working is a
+        // supervisory question, and it lives on its own route precisely so that this check
+        // exists in one place rather than as a query parameter somebody has to remember.
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [RequiresDatabaseFact]
+    public async Task AnOrdinaryEmployee_CanStillSeeTheirOwnPermits()
+    {
+        var client = await SignInAsPlainEmployeeAsync();
+
+        var response = await client.GetAsync("/api/permits?assignedToMe=true&order=Schedule");
+
+        // The flag resolves to the caller's own employee id on the server. There is no field
+        // on the request through which it could be pointed at anybody else.
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [RequiresDatabaseFact]
     public async Task AnOrdinaryEmployee_CanStillReadWhatTheyNeed()
     {
         var client = await SignInAsPlainEmployeeAsync();
