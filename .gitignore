@@ -17,10 +17,6 @@ coverage/
 *.sln.iml
 *.DotSettings.user
 
-## AI assistant tooling — local developer configuration, not part of the project
-CLAUDE.md
-.claude/
-
 ## Visual Studio
 .vs/
 
