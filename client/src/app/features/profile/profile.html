@@ -1,0 +1,212 @@
+<div class="page">
+  @if (loading()) {
+    <div class="card"><p class="empty">Loading…</p></div>
+  } @else if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  } @else if (me(); as person) {
+    <div class="page-header">
+      <div>
+        <h1>{{ person.fullName }}</h1>
+        <p class="subtitle">
+          {{ person.employeeNumber }} · {{ person.jobTitle }} · {{ person.companyName }}
+          <span class="badge {{ person.status.toLowerCase() }}">{{ person.status }}</span>
+        </p>
+      </div>
+
+      <button type="button" class="secondary" (click)="editing() ? editing.set(false) : startEditing()">
+        {{ editing() ? 'Cancel' : 'Edit contact details' }}
+      </button>
+    </div>
+
+    @if (saved()) {
+      <div class="alert">Your contact details were saved.</div>
+    }
+
+    @if (expired().length > 0) {
+      <div class="alert error">
+        {{ expired().length === 1 ? 'One of your certifications has' : expired().length + ' of your certifications have' }}
+        expired. You cannot be added to a permit that requires
+        {{ expired().length === 1 ? 'it' : 'them' }} until
+        {{ expired().length === 1 ? 'it is' : 'they are' }} renewed.
+      </div>
+    }
+
+    @if (editing()) {
+      <form class="card" [formGroup]="form" (ngSubmit)="save()">
+        <h2>Contact details</h2>
+        <p class="muted" style="margin-top: -0.5rem">
+          These are the only fields you can change yourself. Your name, trade, job title and
+          email are managed by an administrator — your trade decides which permits you may be
+          put on, so it is not something you can widen on your own.
+        </p>
+
+        @if (saveError()) {
+          <div class="alert error">{{ saveError() }}</div>
+        }
+
+        <div class="grid">
+          <div>
+            <label for="phoneNumber">Phone</label>
+            <input id="phoneNumber" formControlName="phoneNumber" placeholder="+30 210 000 0000" />
+          </div>
+        </div>
+
+        <h2 style="margin-top: 1.25rem">Address</h2>
+        <p class="muted" style="margin-top: -0.5rem">
+          Optional — but all four fields or none. A half-filled address looks like data and is
+          not, so the server rejects it.
+        </p>
+        <div class="grid">
+          <div>
+            <label for="street">Street</label>
+            <input id="street" formControlName="street" />
+          </div>
+          <div>
+            <label for="city">City</label>
+            <input id="city" formControlName="city" />
+          </div>
+          <div>
+            <label for="postalCode">Postal code</label>
+            <input id="postalCode" formControlName="postalCode" />
+          </div>
+          <div>
+            <label for="country">Country</label>
+            <input id="country" formControlName="country" />
+          </div>
+        </div>
+
+        <button type="submit" style="margin-top: 1rem" [disabled]="busy()">
+          {{ busy() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </form>
+    } @else {
+      <div class="card">
+        <h2>Your details</h2>
+        <dl class="facts">
+          <div>
+            <dt>Email</dt>
+            <dd>{{ person.email }}</dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd>{{ person.phoneNumber ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Trade</dt>
+            <dd>{{ person.tradeName }}</dd>
+          </div>
+          <div>
+            <dt>Job title</dt>
+            <dd>{{ person.jobTitle }}</dd>
+          </div>
+          <div>
+            <dt>Reports to</dt>
+            <dd>
+              @if (person.managerId) {
+                <a [routerLink]="['/employees', person.managerId]">{{ person.managerName }}</a>
+              } @else {
+                —
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Hired</dt>
+            <dd>{{ person.hireDate | date: settings.dateFormat() }}</dd>
+          </div>
+          <div>
+            <dt>Address</dt>
+            <dd>
+              @if (person.address; as address) {
+                {{ address.street }}, {{ address.postalCode }} {{ address.city }}, {{ address.country }}
+              } @else {
+                —
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>What you may do</dt>
+            <dd>
+              <span class="badge {{ person.accessRole === 'Employee' ? '' : 'leader' }}">
+                {{ person.accessRole }}
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    }
+
+    <div class="card">
+      <h2>Your certifications</h2>
+      @if (person.certifications.length === 0) {
+        <p class="empty">
+          None recorded. Permits that require a certification cannot include you until one is.
+        </p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Issued by</th>
+              <th>Issued</th>
+              <th>Expires</th>
+              <th>Reference</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (certification of person.certifications; track certification.id) {
+              <tr>
+                <td>{{ certification.certificationTypeName }}</td>
+                <td>{{ certification.issuedBy }}</td>
+                <td>{{ certification.issuedOn | date: settings.dateFormat() }}</td>
+                <td>{{ certification.expiresOn | date: settings.dateFormat() }}</td>
+                <td class="muted">{{ certification.referenceNumber ?? '—' }}</td>
+                <td>
+                  <span class="badge {{ certification.isValid ? 'valid' : 'expired' }}">
+                    {{ certification.isValid ? 'Valid' : 'Expired' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="muted" style="margin-bottom: 0">
+          A certificate must be valid across the whole of a permit's dates, not just on the day
+          it starts — one expiring mid-job is refused when somebody tries to add you.
+        </p>
+      }
+    </div>
+
+    <div class="card">
+      <h2>Your teams</h2>
+      @if (teams().length === 0) {
+        <p class="empty">You are not currently in any team.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Team</th>
+              <th>Facility</th>
+              <th>Leader</th>
+              <th>Members</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (team of teams(); track team.id) {
+              <tr>
+                <td>{{ team.code }}</td>
+                <td><a [routerLink]="['/teams', team.id]">{{ team.name }}</a></td>
+                <td>{{ team.facilityName }}</td>
+                <td>{{ team.leaderName ?? '—' }}</td>
+                <td>{{ team.activeMemberCount }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <a routerLink="/my-permits">See the permits you are on →</a>
+  }
+</div>

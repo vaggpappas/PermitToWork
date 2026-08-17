@@ -46,6 +46,17 @@ export interface UpdateEmployee {
   address?: Address | null;
 }
 
+/**
+ * What a person may change about themselves.
+ *
+ * Mirrors UpdateMyContactRequest on the server, missing fields and all. If a trade or job
+ * title ever appears here it is a mistake, not a feature.
+ */
+export interface UpdateMyContact {
+  phoneNumber?: string | null;
+  address?: Address | null;
+}
+
 export interface AddCertification {
   certificationTypeId: string;
   issuedBy: string;
@@ -74,6 +85,15 @@ export class EmployeesApi {
 
   get(id: string): Observable<EmployeeDetail> {
     return this.http.get<EmployeeDetail>(`/api/employees/${id}`);
+  }
+
+  /** The signed-in user's own record. No id: the server reads it from the token. */
+  me(): Observable<EmployeeDetail> {
+    return this.http.get<EmployeeDetail>('/api/employees/me');
+  }
+
+  updateMyContact(body: UpdateMyContact): Observable<void> {
+    return this.http.put<void>('/api/employees/me/contact', body);
   }
 
   create(body: CreateEmployee): Observable<{ id: string }> {
