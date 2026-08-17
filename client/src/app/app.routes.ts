@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, roleGuard } from './core/auth/auth.guard';
+import { Roles } from './core/auth/auth.service';
 
 // Every feature is loaded on demand. It costs nothing to write and means the login screen
 // does not ship the employee and team screens to someone who has not signed in yet.
@@ -63,6 +64,21 @@ export const routes: Routes = [
     title: 'Approval panels — Permit To Work',
     canActivate: [authGuard],
     loadComponent: () => import('./features/approvals/approval-panels').then((m) => m.ApprovalPanels),
+  },
+  {
+    path: 'admin/reference-data',
+    title: 'Reference data — Permit To Work',
+    // Two guards, and both matter: authGuard sends a signed-out visitor to the login page,
+    // roleGuard turns anybody else away. The API refuses independently — this only avoids
+    // offering a screen that could not work.
+    canActivate: [authGuard, roleGuard(Roles.Administrator)],
+    loadComponent: () => import('./features/admin/reference-data').then((m) => m.ReferenceDataAdmin),
+  },
+  {
+    path: 'admin/audit',
+    title: 'Audit log — Permit To Work',
+    canActivate: [authGuard, roleGuard(Roles.Administrator)],
+    loadComponent: () => import('./features/admin/audit-log').then((m) => m.AuditLog),
   },
   {
     path: 'settings',

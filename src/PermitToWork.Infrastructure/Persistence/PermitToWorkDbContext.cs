@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PermitToWork.Application.Abstractions;
 using PermitToWork.Domain.Organization;
 using PermitToWork.Domain.Permits;
+using PermitToWork.Infrastructure.Auditing;
 using PermitToWork.Infrastructure.Identity;
 
 namespace PermitToWork.Infrastructure.Persistence;
@@ -50,6 +51,12 @@ public class PermitToWorkDbContext : IdentityUserContext<ApplicationUser, Guid>
     public DbSet<PermitType> PermitTypes => Set<PermitType>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Permit> Permits => Set<Permit>();
+
+    /// <summary>
+    /// The technical audit trail, written by an interceptor rather than by any code that
+    /// calls this context. Nothing in the application updates or deletes from it.
+    /// </summary>
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -19,6 +19,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IRequestContext, RequestContext>();
 
 // Turns Permit.ExpireIfElapsed from tested-but-unreachable code into something that runs.
 builder.Services.AddHostedService<PermitExpiryWorker>();

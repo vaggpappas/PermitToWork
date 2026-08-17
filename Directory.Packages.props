@@ -20,7 +20,9 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="$(EfCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EfCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EfCoreVersion)" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="$(EfCoreVersion)" />
+    <!-- No EF InMemory: the counter table is driven by T-SQL that it cannot execute, so
+         integration tests run against real SQL Server instead. -->
+
   </ItemGroup>
 
   <ItemGroup Label="ASP.NET Core">

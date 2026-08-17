@@ -29,7 +29,20 @@ public class Facility : Entity
     public string? Description { get; private set; }
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>
+    /// The name and description can change; the code cannot. Codes appear on permits, on
+    /// team codes and on badge numbers already issued — renaming one would silently
+    /// rewrite what those identifiers meant.
+    /// </summary>
+    public void Rename(string name, string? description)
+    {
+        Name = Guard.Required(name, "Facility name", 200);
+        Description = Guard.Optional(description, "Description", 500);
+    }
+
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }
 
 /// <summary>A unit or area inside a facility. A facility has many.</summary>
@@ -51,7 +64,15 @@ public class Building : Entity
     public string? Description { get; private set; }
     public bool IsActive { get; private set; } = true;
 
+    public void Rename(string name, string? description)
+    {
+        Name = Guard.Required(name, "Building name", 200);
+        Description = Guard.Optional(description, "Description", 500);
+    }
+
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }
 
 /// <summary>
@@ -76,5 +97,13 @@ public class Location : Entity
     public string? Description { get; private set; }
     public bool IsActive { get; private set; } = true;
 
+    public void Rename(string name, string? description)
+    {
+        Name = Guard.Required(name, "Location name", 200);
+        Description = Guard.Optional(description, "Description", 500);
+    }
+
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }

@@ -67,6 +67,21 @@ public interface IReferenceDataRepository
     Task<bool> CertificationTypeExistsAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<bool> FacilityExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every row of one reference table, <em>including retired ones</em>, for the
+    /// administration screen.
+    /// <para>
+    /// Separate from the methods above on purpose: those fill dropdowns and must never
+    /// offer something retired, whereas an administrator has to see what they retired in
+    /// order to restore it. One method that took a flag would eventually be called with the
+    /// wrong one from a dropdown.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<ReferenceData.ReferenceItemDto>> ListForAdminAsync(
+        ReferenceData.ReferenceKind kind,
+        Guid? parentId = null,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record LookupDto(Guid Id, string Code, string Name);

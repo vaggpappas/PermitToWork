@@ -9,6 +9,8 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using PermitToWork.Application.Abstractions;
 using PermitToWork.Application.Accounts;
+using PermitToWork.Application.Auditing;
+using PermitToWork.Infrastructure.Auditing;
 using PermitToWork.Infrastructure.Identity;
 using PermitToWork.Infrastructure.Persistence;
 using PermitToWork.Infrastructure.Persistence.Repositories;
@@ -31,7 +33,13 @@ public static class DependencyInjection
                                ?? throw new InvalidOperationException(
                                    $"Connection string '{ConnectionStringName}' is not configured.");
 
-        services.AddDbContext<PermitToWorkDbContext>(options => options
+        // Scoped, because it reads the signed-in user and the current request.
+        services.AddScoped<AuditSaveChangesInterceptor>();
+
+        services.AddDbContext<PermitToWorkDbContext>((serviceProvider, options) => options
+            // Resolved from the scope rather than constructed here, so each request's audit
+            // lines carry that request's actor.
+            .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
             .UseSqlServer(connectionString, sql =>
                 sql.MigrationsAssembly(typeof(PermitToWorkDbContext).Assembly.FullName))
             // Employee.Address is an optional owned type whose columns are all nullable,
@@ -66,6 +74,8 @@ public static class DependencyInjection
         services.AddScoped<IPermitRepository, PermitRepository>();
         services.AddScoped<IFacilityApproverRepository, FacilityApproverRepository>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<IReferenceDataWriter, ReferenceDataWriter>();
+        services.AddScoped<IAuditRepository, AuditRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;

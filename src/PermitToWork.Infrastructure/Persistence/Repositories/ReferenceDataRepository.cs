@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PermitToWork.Application.Abstractions;
+using PermitToWork.Application.ReferenceData;
+using PermitToWork.Domain.Permits;
 
 namespace PermitToWork.Infrastructure.Persistence.Repositories;
 
@@ -68,4 +70,78 @@ internal sealed class ReferenceDataRepository(PermitToWorkDbContext context) : I
 
     public Task<bool> FacilityExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.Facilities.AnyAsync(f => f.Id == id && f.IsActive, cancellationToken);
+
+    public async Task<IReadOnlyList<ReferenceItemDto>> ListForAdminAsync(
+        ReferenceKind kind,
+        Guid? parentId = null,
+        CancellationToken cancellationToken = default) =>
+        kind switch
+        {
+            ReferenceKind.Company => await context.Companies
+                .AsNoTracking()
+                .OrderBy(c => c.Name)
+                // Extra carries whatever is worth showing but does not fit the shared shape —
+                // a company's kind, a permit type's requirements. One column beats eight DTOs.
+                .Select(c => new ReferenceItemDto(c.Id, c.Code, c.Name, null, c.IsActive, null, c.Kind.ToString()))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.Facility => await context.Facilities
+                .AsNoTracking()
+                .OrderBy(f => f.Name)
+                .Select(f => new ReferenceItemDto(f.Id, f.Code, f.Name, f.Description, f.IsActive, null, null))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.Building => await context.Buildings
+                .AsNoTracking()
+                .Where(b => parentId == null || b.FacilityId == parentId)
+                .OrderBy(b => b.Name)
+                .Select(b => new ReferenceItemDto(
+                    b.Id, b.Code, b.Name, b.Description, b.IsActive, b.FacilityId, null))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.Location => await context.Locations
+                .AsNoTracking()
+                .Where(l => parentId == null || l.BuildingId == parentId)
+                .OrderBy(l => l.Name)
+                .Select(l => new ReferenceItemDto(
+                    l.Id, l.Code, l.Name, l.Description, l.IsActive, l.BuildingId, null))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.Trade => await context.Trades
+                .AsNoTracking()
+                .OrderBy(t => t.Name)
+                .Select(t => new ReferenceItemDto(t.Id, t.Code, t.Name, null, t.IsActive, null, null))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.CertificationType => await context.CertificationTypes
+                .AsNoTracking()
+                .OrderBy(t => t.Name)
+                .Select(t => new ReferenceItemDto(t.Id, t.Code, t.Name, null, t.IsActive, null, null))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.Category => await context.Categories
+                .AsNoTracking()
+                .OrderBy(c => c.Name)
+                .Select(c => new ReferenceItemDto(c.Id, c.Code, c.Name, null, c.IsActive, null, null))
+                .ToListAsync(cancellationToken),
+
+            ReferenceKind.PermitType => await context.PermitTypes
+                .AsNoTracking()
+                .OrderBy(t => t.Name)
+                .Select(t => new ReferenceItemDto(
+                    t.Id,
+                    t.Code,
+                    t.Name,
+                    t.Description,
+                    t.IsActive,
+                    null,
+                    string.Join(", ",
+                        from requirement in context.Set<PermitTypeCertification>()
+                        join type in context.CertificationTypes on requirement.CertificationTypeId equals type.Id
+                        where requirement.PermitTypeId == t.Id
+                        select type.Name)))
+                .ToListAsync(cancellationToken),
+
+            _ => []
+        };
 }

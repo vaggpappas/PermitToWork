@@ -260,6 +260,45 @@ export interface PermitType {
   requiredCertifications: string[];
 }
 
+/* ------------------------------------------------- administration */
+
+/** Matches the ReferenceKind enum on the server; used directly in the route. */
+export type ReferenceKind =
+  | 'Company'
+  | 'Facility'
+  | 'Building'
+  | 'Location'
+  | 'Trade'
+  | 'CertificationType'
+  | 'Category'
+  | 'PermitType';
+
+export interface ReferenceItem {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  parentId: string | null;
+  /** Whatever does not fit the shared shape — a company's kind, a permit type's requirements. */
+  extra: string | null;
+}
+
+export interface AuditEntry {
+  id: string;
+  occurredOn: string;
+  action: 'Created' | 'Updated' | 'Deleted';
+  entityType: string;
+  entityId: string;
+  actorEmployeeId: string | null;
+  actorName: string;
+  requestMethod: string | null;
+  requestPath: string | null;
+  ipAddress: string | null;
+  /** JSON: property names to their old and new values. */
+  changes: string | null;
+}
+
 export interface FacilityApprover {
   id: string;
   facilityId: string;

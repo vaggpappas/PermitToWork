@@ -1,0 +1,71 @@
+td small {
+  display: block;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.mono {
+  font-family: 'Cascadia Code', Consolas, 'SF Mono', Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+.when {
+  white-space: nowrap;
+}
+
+.request {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge.created {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.badge.updated {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+}
+
+.badge.deleted {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+/* ---------- expanded detail ---------- */
+
+.detail-row td {
+  background: var(--surface-raised);
+  padding: 0.5rem 0.9rem 0.9rem;
+}
+
+table.changes {
+  margin: 0;
+}
+
+table.changes th {
+  background: transparent;
+  font-size: 0.68rem;
+}
+
+table.changes td,
+table.changes th {
+  padding: 0.35rem 0.6rem;
+  border-bottom-color: var(--border);
+}
+
+/* Before in muted red, after in green. The point of an audit line is the difference, and
+   colour carries that faster than reading two columns of similar text. */
+.before {
+  color: var(--danger);
+}
+
+.after {
+  color: var(--success);
+}

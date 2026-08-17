@@ -1,0 +1,87 @@
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.88rem;
+}
+
+.tabs button:hover:not(.selected) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.tabs button.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-nav);
+}
+
+.tab-hint {
+  margin: 0 0 1.1rem;
+  max-width: 70ch;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin: 0.3rem 0 0;
+  line-height: 1.4;
+}
+
+.code {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* A retired row stays legible but visibly out of service — greying it out entirely would
+   make the Restore button hard to find, which is the one thing you came here to do. */
+tr.retired td:not(.actions) {
+  opacity: 0.55;
+}
+
+td.actions {
+  white-space: nowrap;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.requirements {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  margin-top: 0.6rem;
+}
+
+label.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--text);
+  margin: 0;
+  cursor: pointer;
+}
+
+label.checkbox input {
+  width: auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

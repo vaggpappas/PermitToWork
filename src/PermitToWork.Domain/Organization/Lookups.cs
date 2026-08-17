@@ -33,6 +33,8 @@ public class Trade : Entity
     public void Rename(string name) => Name = Guard.Required(name, "Trade name", 100);
 
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }
 
 /// <summary>
@@ -56,4 +58,6 @@ public class CertificationType : Entity
     public void Rename(string name) => Name = Guard.Required(name, "Certification type name", 100);
 
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }

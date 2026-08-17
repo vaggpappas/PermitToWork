@@ -15,7 +15,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="NSubstitute" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <!-- Boots the real API in memory for the integration tests. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 

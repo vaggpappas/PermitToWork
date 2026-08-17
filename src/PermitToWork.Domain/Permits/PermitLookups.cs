@@ -32,6 +32,16 @@ public class PermitType : Entity
     public string? Description { get; private set; }
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>
+    /// The code cannot change: it is the prefix of every permit number already issued for
+    /// this type, and rewriting it would make HW-2026-0001 mean something else.
+    /// </summary>
+    public void Rename(string name, string? description)
+    {
+        Name = Guard.Required(name, "Permit type name", 100);
+        Description = Guard.Optional(description, "Description", 500);
+    }
+
     /// <summary>What every worker on a permit of this type must hold.</summary>
     public IReadOnlyList<PermitTypeCertification> RequiredCertifications => _requiredCertifications;
 
@@ -91,5 +101,9 @@ public class Category : Entity
     public string Name { get; private set; } = null!;
     public bool IsActive { get; private set; } = true;
 
+    public void Rename(string name) => Name = Guard.Required(name, "Category name", 100);
+
     public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 }

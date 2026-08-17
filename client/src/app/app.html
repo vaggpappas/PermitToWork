@@ -47,6 +47,26 @@
           </svg>
           Approval panels
         </a>
+
+        @if (auth.isAdministrator()) {
+          <p class="nav-section">Administration</p>
+
+          <a routerLink="/admin/reference-data" routerLinkActive="active">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <ellipse cx="12" cy="5" rx="9" ry="3" />
+              <path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3" />
+            </svg>
+            Reference data
+          </a>
+
+          <a routerLink="/admin/audit" routerLinkActive="active">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8v4l3 2" />
+              <path d="M3.05 11a9 9 0 1 1 .5 4M3 21v-5h5" />
+            </svg>
+            Audit log
+          </a>
+        }
       </nav>
 
       <div class="sidebar-footer">

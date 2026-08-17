@@ -1,0 +1,161 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Audit log</h1>
+      <p class="subtitle">
+        Every insert, update and delete the application has made — who, when, through which
+        request, and the values before and after. Written automatically; nothing can amend
+        or remove a line.
+      </p>
+    </div>
+  </div>
+
+  <form class="card" [formGroup]="filters" (ngSubmit)="applyFilters()">
+    <div class="row">
+      <div style="flex: 2; min-width: 200px">
+        <label for="search">Search</label>
+        <input id="search" formControlName="search" placeholder="Type, path, or a changed value" />
+      </div>
+      <div style="flex: 1; min-width: 140px">
+        <label for="action">Action</label>
+        <select id="action" formControlName="action">
+          <option value="">Any</option>
+          <option value="Created">Created</option>
+          <option value="Updated">Updated</option>
+          <option value="Deleted">Deleted</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 150px">
+        <label for="entityType">Record type</label>
+        <input id="entityType" formControlName="entityType" placeholder="Employee" />
+      </div>
+      <div style="min-width: 190px">
+        <label for="from">From</label>
+        <input id="from" type="datetime-local" formControlName="from" />
+      </div>
+      <div style="min-width: 190px">
+        <label for="to">To</label>
+        <input id="to" type="datetime-local" formControlName="to" />
+      </div>
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  }
+
+  <div class="card">
+    @if (loading()) {
+      <p class="empty">Loading…</p>
+    } @else if (result(); as page) {
+      @if (page.items.length === 0) {
+        <p class="empty">Nothing matches those filters.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Who</th>
+              <th>Action</th>
+              <th>Record</th>
+              <th>Request</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of page.items; track entry.id) {
+              <tr>
+                <td class="when">
+                  {{ entry.occurredOn | date: settings.dateFormat() }}
+                  <small class="muted">{{ entry.occurredOn | date: 'HH:mm:ss' }}</small>
+                </td>
+                <td>
+                  {{ entry.actorName }}
+                  @if (entry.ipAddress) {
+                    <small class="muted">{{ entry.ipAddress }}</small>
+                  }
+                </td>
+                <td>
+                  <span class="badge {{ entry.action.toLowerCase() }}">{{ entry.action }}</span>
+                </td>
+                <td>
+                  {{ entry.entityType }}
+                  <small class="muted mono">{{ entry.entityId }}</small>
+                </td>
+                <td class="muted mono request">
+                  @if (entry.requestPath) {
+                    {{ entry.requestMethod }} {{ entry.requestPath }}
+                  } @else {
+                    <em>background</em>
+                  }
+                </td>
+                <td>
+                  @if (entry.changes) {
+                    <button type="button" class="link small" (click)="toggle(entry.id)">
+                      {{ isExpanded(entry.id) ? 'Hide' : 'Details' }}
+                    </button>
+                  }
+                </td>
+              </tr>
+
+              @if (isExpanded(entry.id)) {
+                <tr class="detail-row">
+                  <td colspan="6">
+                    <table class="changes">
+                      <thead>
+                        <tr>
+                          <th>Property</th>
+                          <th>Before</th>
+                          <th>After</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (change of changesOf(entry); track change.property) {
+                          <tr>
+                            <td class="mono">{{ change.property }}</td>
+                            <td class="mono before">{{ change.from || '—' }}</td>
+                            <td class="mono after">{{ change.to }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+
+        <div class="row" style="margin-top: 1rem; align-items: center">
+          <span class="muted">
+            {{ page.totalCount }} entr{{ page.totalCount === 1 ? 'y' : 'ies' }} · page
+            {{ page.page }} of {{ page.totalPages }}
+          </span>
+          <span class="spacer"></span>
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!page.hasPreviousPage"
+            (click)="goToPage(page.page - 1)"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!page.hasNextPage"
+            (click)="goToPage(page.page + 1)"
+          >
+            Next
+          </button>
+        </div>
+
+        <p class="muted" style="margin-bottom: 0">
+          Passwords and security stamps are never recorded. Actions with no person against
+          them were performed by the system — the expiry sweep, or seeding on startup.
+        </p>
+      }
+    }
+  </div>
+</div>

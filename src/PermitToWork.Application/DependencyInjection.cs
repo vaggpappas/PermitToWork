@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using PermitToWork.Application.Employees;
 using PermitToWork.Application.Permits;
+using PermitToWork.Application.ReferenceData;
 using PermitToWork.Application.Teams;
 
 namespace PermitToWork.Application;
@@ -13,6 +14,7 @@ public static class DependencyInjection
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<IPermitService, PermitService>();
         services.AddScoped<IPermitExpiryService, PermitExpiryService>();
+        services.AddScoped<IReferenceDataService, ReferenceDataService>();
         services.AddScoped<IFacilityApproverService, FacilityApproverService>();
 
         return services;
