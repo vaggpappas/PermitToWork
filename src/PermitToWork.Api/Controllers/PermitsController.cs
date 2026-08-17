@@ -30,6 +30,19 @@ public sealed class PermitsController(IPermitService permits, IPermitExpiryServi
     private const string ControlRoles =
         $"{ApplicationRoles.Administrator},{ApplicationRoles.SafetyOfficer},{ApplicationRoles.Responsible}";
 
+    /// <summary>
+    /// Who may ask where a named colleague is working.
+    /// <para>
+    /// The same people who can already raise or halt a permit. "Where is Marta right now" is
+    /// a question a safety officer needs answered, and anyone on this list could reach the
+    /// same facts by opening the permits one at a time — this only saves them the walk. It is
+    /// still not a question an ordinary worker gets to ask about their colleagues.
+    /// </para>
+    /// </summary>
+    private const string CrewSearchRoles =
+        $"{ApplicationRoles.Administrator},{ApplicationRoles.Supervisor}," +
+        $"{ApplicationRoles.SafetyOfficer},{ApplicationRoles.Responsible}";
+
     #region Reading
 
     /// <summary>Searches permits, newest first.</summary>
@@ -39,6 +52,23 @@ public sealed class PermitsController(IPermitService permits, IPermitExpiryServi
         [FromQuery] PermitSearchRequest request,
         CancellationToken cancellationToken) =>
         Ok(await permits.SearchAsync(request, cancellationToken));
+
+    /// <summary>
+    /// The permits a named employee is on, as crew or as Receiver.
+    /// </summary>
+    /// <remarks>
+    /// Its own route with its own role check, rather than a filter on the search above.
+    /// A query parameter on an endpoint everybody can reach is not an access control — it is
+    /// an access control that has to be remembered every time somebody edits the endpoint.
+    /// </remarks>
+    [HttpGet("assigned-to/{employeeId:guid}")]
+    [Authorize(Roles = CrewSearchRoles)]
+    [ProducesResponseType<PagedResult<PermitSummaryDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<PermitSummaryDto>>> SearchByCrewMember(
+        Guid employeeId,
+        [FromQuery] PermitSearchRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await permits.SearchForCrewMemberAsync(employeeId, request, cancellationToken));
 
     /// <summary>One permit, with its approvals, crew, equipment and full history.</summary>
     [HttpGet("{id:guid}")]

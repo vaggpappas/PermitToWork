@@ -11,6 +11,20 @@ public interface IPermitService
 {
     Task<PagedResult<PermitSummaryDto>> SearchAsync(PermitSearchRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The permits a given employee is on, as crew or as Receiver.
+    /// <para>
+    /// A separate method rather than another flag on <see cref="PermitSearchRequest"/>,
+    /// because naming somebody else is a different privilege from searching. Keeping the
+    /// employee id off the bound request means the ordinary search endpoint has no field
+    /// through which it could be asked, whatever anyone puts in the query string.
+    /// </para>
+    /// </summary>
+    Task<PagedResult<PermitSummaryDto>> SearchForCrewMemberAsync(
+        Guid employeeId,
+        PermitSearchRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<PermitDetailDto> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<PermitTypeDto>> GetPermitTypesAsync(CancellationToken cancellationToken = default);
@@ -70,7 +84,16 @@ public sealed class PermitService(
     public Task<PagedResult<PermitSummaryDto>> SearchAsync(
         PermitSearchRequest request,
         CancellationToken cancellationToken = default) =>
-        permits.SearchAsync(request, currentUser.EmployeeId, cancellationToken);
+        permits.SearchAsync(request, currentUser.EmployeeId, cancellationToken: cancellationToken);
+
+    public Task<PagedResult<PermitSummaryDto>> SearchForCrewMemberAsync(
+        Guid employeeId,
+        PermitSearchRequest request,
+        CancellationToken cancellationToken = default) =>
+        // The company query filter still applies underneath: a contractor supervisor asking
+        // about somebody outside their own company gets an empty page, not a refusal, because
+        // as far as their scope is concerned that person does not exist.
+        permits.SearchAsync(request, currentUser.EmployeeId, employeeId, cancellationToken);
 
     public async Task<PermitDetailDto> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         await permits.GetDetailAsync(id, cancellationToken) ?? throw new NotFoundException(nameof(Permit), id);

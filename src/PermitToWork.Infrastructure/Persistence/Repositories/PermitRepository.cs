@@ -46,6 +46,7 @@ internal sealed class PermitRepository(
     public async Task<PagedResult<PermitSummaryDto>> SearchAsync(
         PermitSearchRequest request,
         Guid? currentEmployeeId,
+        Guid? crewMemberId = null,
         CancellationToken cancellationToken = default)
     {
         var query = Visible.AsNoTracking();
@@ -77,6 +78,19 @@ internal sealed class PermitRepository(
                                                              && a.Decision == ApprovalDecision.Pending));
         }
 
+        // "My permits" and "that person's permits" ask the data exactly the same question and
+        // differ only in who is allowed to ask it — which the controller has already decided
+        // by the time either value gets here. Resolving both to one variable keeps it that
+        // way: one filter, so the two views can never drift apart in what "on a permit" means.
+        var crewMember = crewMemberId ?? (request.AssignedToMe ? currentEmployeeId : null);
+        if (crewMember is { } person)
+        {
+            // The Receiver counts. They are accountable for the work happening on site, and a
+            // list that omitted the permits they answer for would be worse than no list.
+            query = query.Where(p => p.ReceiverId == person
+                                     || p.Workers.Any(w => w.EmployeeId == person));
+        }
+
         var term = request.Search?.Trim();
         if (!string.IsNullOrEmpty(term))
         {
@@ -92,9 +106,26 @@ internal sealed class PermitRepository(
             return PagedResult<PermitSummaryDto>.Empty(request.PageSize);
         }
 
-        // Newest first: a permit book is read from the top.
-        var page = query
-            .OrderByDescending(p => p.Validity.Start)
+        // Captured once. Reading the clock inside the expression would put a different value
+        // in the ordering than in the count, and the boundary row would move between them.
+        var now = DateTimeOffset.UtcNow;
+
+        var ordered = request.Order switch
+        {
+            // What a person needs in order to do their job: what is live right now, then
+            // whatever starts soonest. The comparison is half-open to match
+            // DateTimeRange.Contains — the end instant is the first moment outside the
+            // period, and having two different answers to "is this on now" in one codebase
+            // is how a permit ends up live on one screen and finished on another.
+            PermitOrder.Schedule => query
+                .OrderBy(p => p.Validity.Start <= now && now < p.Validity.End ? 0 : 1)
+                .ThenBy(p => p.Validity.Start),
+
+            // Newest first: a permit book is read from the top.
+            _ => query.OrderByDescending(p => p.Validity.Start),
+        };
+
+        var page = ordered
             .Skip(request.Skip)
             .Take(request.PageSize);
 

@@ -20,9 +20,19 @@ public interface IPermitRepository
 
     Task<PermitDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>One page of permits, filtered and ordered by the request.</summary>
+    /// <param name="request">Filters, paging and ordering, bound from the query string.</param>
+    /// <param name="currentEmployeeId">Who is asking, for the "mine" filters.</param>
+    /// <param name="crewMemberId">
+    /// Whose assignments to list, when the caller is allowed to ask about someone else.
+    /// Null for an ordinary search. Kept as a parameter rather than a field on the request
+    /// so it cannot arrive from a query string.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the query.</param>
     Task<PagedResult<PermitSummaryDto>> SearchAsync(
         PermitSearchRequest request,
         Guid? currentEmployeeId,
+        Guid? crewMemberId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

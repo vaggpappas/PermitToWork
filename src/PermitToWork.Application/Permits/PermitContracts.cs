@@ -149,6 +149,38 @@ public sealed record PermitSearchRequest : PageRequest
 
     /// <summary>Only permits the signed-in user raised.</summary>
     public bool RaisedByMe { get; init; }
+
+    /// <summary>
+    /// Only permits the signed-in user is actually on — as a member of the crew, or as the
+    /// Receiver accountable for the work.
+    /// </summary>
+    /// <remarks>
+    /// Note what this request deliberately cannot express: <em>somebody else's</em> permits.
+    /// There is no employee id here to set. Reading another person's assignments goes
+    /// through its own endpoint with its own role check, so an open endpoint can never be
+    /// turned into one by adding a query parameter to it.
+    /// </remarks>
+    public bool AssignedToMe { get; init; }
+
+    public PermitOrder Order { get; init; } = PermitOrder.Newest;
+}
+
+/// <summary>
+/// How a page of permits is sorted.
+/// <para>
+/// An enum rather than a sort-column string, so "order by whatever the client sent" cannot
+/// happen and every ordering the application supports is visible in one place.
+/// </para>
+/// </summary>
+public enum PermitOrder
+{
+    /// <summary>Most recent validity first. A permit book is read from the top.</summary>
+    Newest = 0,
+
+    /// <summary>
+    /// What a person needs to do: permits live right now, then the soonest upcoming.
+    /// </summary>
+    Schedule = 1
 }
 
 public sealed record CreatePermitRequest
