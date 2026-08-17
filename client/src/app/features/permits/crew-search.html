@@ -1,0 +1,122 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Active permits</h1>
+      <p class="subtitle">Find a person, and see the permits they are working under.</p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  }
+
+  <form class="card" [formGroup]="form" (ngSubmit)="findPeople()">
+    <div class="row">
+      <div style="flex: 2; min-width: 220px">
+        <label for="search">Employee</label>
+        <input id="search" formControlName="search" placeholder="Name or badge number" />
+      </div>
+      <button type="submit">Search</button>
+    </div>
+
+    @if (searched() && candidates().length === 0) {
+      <p class="empty" style="margin-bottom: 0">Nobody active matches that.</p>
+    }
+
+    @if (candidates().length > 0) {
+      <table style="margin-top: 1rem">
+        <thead>
+          <tr>
+            <th>Badge</th>
+            <th>Name</th>
+            <th>Trade</th>
+            <th>Company</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (employee of candidates(); track employee.id) {
+            <tr>
+              <td>{{ employee.employeeNumber }}</td>
+              <td><a [routerLink]="['/employees', employee.id]">{{ employee.fullName }}</a></td>
+              <td>{{ employee.tradeName }}</td>
+              <td>{{ employee.companyName }}</td>
+              <td>
+                <button type="button" class="link small" (click)="choose(employee)">
+                  See permits
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </form>
+
+  @if (chosen(); as employee) {
+    <div class="card">
+      <div class="row" style="margin-bottom: 0.75rem">
+        <div>
+          <h2 style="margin: 0">{{ employee.fullName }}</h2>
+          <p class="muted" style="margin: 0.15rem 0 0">
+            {{ employee.employeeNumber }} · {{ employee.tradeName }} · {{ employee.companyName }}
+          </p>
+        </div>
+        <span class="spacer"></span>
+        <button type="button" class="secondary small" (click)="toggleScope()">
+          {{ liveOnly() ? 'Show every permit' : 'Show only live work' }}
+        </button>
+        <button type="button" class="link small" (click)="clear()">Close</button>
+      </div>
+
+      @if (loading()) {
+        <p class="empty">Loading…</p>
+      } @else if (results().length === 0) {
+        <p class="empty">
+          @if (liveOnly()) {
+            Not working under any permit at this moment.
+          } @else {
+            Never been on a permit.
+          }
+        </p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Number</th>
+              <th>Type</th>
+              <th>Work</th>
+              <th>Where</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (permit of results(); track permit.id) {
+              <tr>
+                <td><a [routerLink]="['/permits', permit.id]">{{ permit.permitNumber }}</a></td>
+                <td>{{ permit.permitTypeName }}</td>
+                <td>{{ permit.workDescription }}</td>
+                <td>{{ permit.facilityName }} · {{ permit.locationName }}</td>
+                <td>{{ permit.validFrom | date: settings.dateFormat() }}</td>
+                <td>{{ permit.validTo | date: settings.dateFormat() }}</td>
+                <td>
+                  <span class="badge {{ permit.status.toLowerCase() }}">{{ permit.status }}</span>
+                  @if (permit.isOverdue) {
+                    <span class="badge expired">Overdue</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <p class="muted" style="margin-bottom: 0">
+          Includes permits where they are the Receiver as well as the crew. You only see people
+          and permits within your own company scope.
+        </p>
+      }
+    </div>
+  }
+</div>

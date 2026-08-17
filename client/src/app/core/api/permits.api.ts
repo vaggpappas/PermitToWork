@@ -12,6 +12,9 @@ import {
   PermitType,
 } from '../models';
 
+/** Mirrors PermitOrder on the server. */
+export type PermitOrder = 'Newest' | 'Schedule';
+
 export interface PermitSearch {
   search?: string;
   status?: PermitStatus;
@@ -19,6 +22,9 @@ export interface PermitSearch {
   facilityId?: string;
   awaitingMyApproval?: boolean;
   raisedByMe?: boolean;
+  /** Permits the signed-in user is on, as crew or as Receiver. */
+  assignedToMe?: boolean;
+  order?: PermitOrder;
   page?: number;
   pageSize?: number;
 }
@@ -51,6 +57,24 @@ export class PermitsApi {
     }
 
     return this.http.get<PagedResult<PermitSummary>>('/api/permits', { params });
+  }
+
+  /**
+   * The permits a named employee is on.
+   *
+   * A different URL rather than another field on PermitSearch, mirroring the server: naming
+   * somebody else is a different privilege from searching, and it carries its own role check.
+   */
+  assignedTo(employeeId: string, query: PermitSearch = {}): Observable<PagedResult<PermitSummary>> {
+    let params = new HttpParams();
+
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null && value !== '' && value !== false) {
+        params = params.set(key, String(value));
+      }
+    }
+
+    return this.http.get<PagedResult<PermitSummary>>(`/api/permits/assigned-to/${employeeId}`, { params });
   }
 
   get(id: string): Observable<PermitDetail> {
