@@ -13,7 +13,7 @@ certificate cannot be added to a Hot Work permit — live in the domain model, n
   <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031">
   <img alt="SQL Server 2022" src="https://img.shields.io/badge/SQL%20Server-2022-CC2927">
   <img alt="EF Core 10" src="https://img.shields.io/badge/EF%20Core-10.0-512BD4">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-166%20passing-2ea44f">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-179%20passing-2ea44f">
 </p>
 
 > Final project — **Coding Factory 10**, Athens University of Economics and Business.
@@ -312,7 +312,7 @@ docker compose up -d sqlserver          # required for the integration tests
 dotnet test PermitToWork.sln
 ```
 
-**166 tests: 153 unit + 13 integration.**
+**179 tests: 158 unit + 21 integration.**
 
 | Layer | What it proves | Needs a database? |
 |---|---|---|
