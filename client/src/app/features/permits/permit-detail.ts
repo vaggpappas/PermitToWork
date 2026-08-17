@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 import { EmployeesApi } from '../../core/api/employees.api';
 import { PermitsApi } from '../../core/api/permits.api';
 import { AuthService } from '../../core/auth/auth.service';
-import { EmployeeSummary, PermitDetail as Permit } from '../../core/models';
+import { DocumentPolicy, EmployeeSummary, PermitDetail as Permit } from '../../core/models';
 import { describeError } from '../../core/problem-details';
 import { SettingsService } from '../../core/settings/settings.service';
 
@@ -35,6 +35,11 @@ export class PermitDetail {
 
   protected readonly addingWorker = signal(false);
   protected readonly addingEquipment = signal(false);
+  protected readonly addingDocument = signal(false);
+
+  protected readonly documentPolicy = signal<DocumentPolicy | null>(null);
+  protected readonly chosenFile = signal<File | null>(null);
+  protected readonly uploading = signal(false);
 
   protected readonly workerForm = this.formBuilder.nonNullable.group({
     employeeId: ['', Validators.required],
@@ -79,7 +84,80 @@ export class PermitDetail {
       .search({ status: 'Active', pageSize: 100 })
       .subscribe({ next: (page) => this.candidates.set(page.items) });
 
+    this.permits.documentPolicy().subscribe({ next: (policy) => this.documentPolicy.set(policy) });
+
     queueMicrotask(() => this.load());
+  }
+
+  /* ------------------------------------------------------------ documents */
+
+  protected chooseFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+
+    this.actionError.set(null);
+
+    // Checked here purely so the user hears about an eleven-megabyte file immediately
+    // rather than after uploading it. The server checks again, and the server's answer is
+    // the one that counts.
+    const policy = this.documentPolicy();
+    if (file && policy && file.size > policy.maxBytes) {
+      const megabytes = (file.size / 1024 / 1024).toFixed(1);
+      this.actionError.set(`That file is ${megabytes} MB. The limit is ${policy.maxMegabytes} MB.`);
+      input.value = '';
+      this.chosenFile.set(null);
+      return;
+    }
+
+    this.chosenFile.set(file);
+  }
+
+  protected uploadDocument(): void {
+    const file = this.chosenFile();
+    if (!file || this.uploading()) {
+      return;
+    }
+
+    this.uploading.set(true);
+    this.actionError.set(null);
+
+    this.permits.attachDocument(this.id(), file).subscribe({
+      next: () => {
+        this.uploading.set(false);
+        this.addingDocument.set(false);
+        this.chosenFile.set(null);
+        this.load();
+      },
+      error: (failure: unknown) => {
+        this.actionError.set(describeError(failure));
+        this.uploading.set(false);
+      },
+    });
+  }
+
+  protected downloadDocument(documentId: string, fileName: string): void {
+    // Fetched through HttpClient rather than a plain link, so the interceptor attaches the
+    // bearer token — a bare href would arrive unauthenticated and 401.
+    this.permits.downloadDocument(this.id(), documentId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = fileName;
+        link.click();
+
+        // Released immediately; the browser has already taken what it needs.
+        URL.revokeObjectURL(url);
+      },
+      error: (failure: unknown) => this.actionError.set(describeError(failure)),
+    });
+  }
+
+  protected removeDocument(documentId: string, fileName: string): void {
+    if (confirm(`Remove ${fileName} from this permit?`)) {
+      this.run(this.permits.removeDocument(this.id(), documentId));
+    }
   }
 
   protected load(): void {

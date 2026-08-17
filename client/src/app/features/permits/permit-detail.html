@@ -303,36 +303,91 @@
       <div class="row" style="margin-bottom: 0.75rem">
         <h2 style="margin: 0">Documents</h2>
         <span class="spacer"></span>
-        <button type="button" class="secondary small" disabled title="Upload is not built yet">
-          Attach a document
-        </button>
+        @if (p.status !== 'Closed' && p.status !== 'Rejected' && p.status !== 'Cancelled') {
+          <button type="button" class="secondary small" (click)="addingDocument.set(!addingDocument())">
+            {{ addingDocument() ? 'Cancel' : 'Attach a document' }}
+          </button>
+        }
       </div>
+
+      @if (addingDocument()) {
+        <div class="upload">
+          @if (documentPolicy(); as policy) {
+            <!-- The limits come from the API, so this sentence cannot drift from the rule
+                 the server actually enforces. -->
+            <p class="upload-rules">
+              <strong>{{ policy.description }}</strong>
+              <span class="muted">Accepted: {{ policy.allowedExtensions.join(', ') }}</span>
+            </p>
+
+            <div class="row">
+              <input
+                type="file"
+                [attr.accept]="policy.accept"
+                [disabled]="uploading()"
+                (change)="chooseFile($event)"
+              />
+
+              <button type="button" [disabled]="!chosenFile() || uploading()" (click)="uploadDocument()">
+                {{ uploading() ? 'Uploading…' : 'Upload' }}
+              </button>
+            </div>
+
+            @if (chosenFile(); as file) {
+              <p class="muted chosen">
+                {{ file.name }} — {{ (file.size / 1024 / 1024).toFixed(2) }} MB
+              </p>
+            }
+          } @else {
+            <p class="muted">Checking what may be attached…</p>
+          }
+        </div>
+      }
 
       @if (p.documents.length === 0) {
         <p class="empty">
           No documents attached.
           <br />
-          <small>Method statements, risk assessments and drawings will live here.</small>
+          <small>Method statements, risk assessments, drawings and photographs. Optional.</small>
         </p>
       } @else {
         <table>
           <thead>
             <tr>
               <th>File</th>
-              <th>Type</th>
               <th>Size</th>
               <th>Uploaded by</th>
               <th>When</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             @for (document of p.documents; track document.id) {
               <tr>
-                <td>{{ document.fileName }}</td>
-                <td class="muted">{{ document.contentType }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="link"
+                    (click)="downloadDocument(document.id, document.fileName)"
+                  >
+                    {{ document.fileName }}
+                  </button>
+                </td>
                 <td>{{ (document.sizeInBytes / 1024).toFixed(0) }} KB</td>
                 <td>{{ document.uploadedByName }}</td>
                 <td>{{ document.uploadedOn | date: settings.dateFormat() }}</td>
+                <td>
+                  @if (p.status !== 'Closed' && p.status !== 'Rejected' && p.status !== 'Cancelled') {
+                    <button
+                      type="button"
+                      class="link small"
+                      [disabled]="busy()"
+                      (click)="removeDocument(document.id, document.fileName)"
+                    >
+                      Remove
+                    </button>
+                  }
+                </td>
               </tr>
             }
           </tbody>

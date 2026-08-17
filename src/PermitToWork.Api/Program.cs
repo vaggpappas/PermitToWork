@@ -3,6 +3,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.OpenApi;
 using PermitToWork.Api.Authentication;
+using PermitToWork.Api.BackgroundServices;
 using PermitToWork.Api.ExceptionHandling;
 using PermitToWork.Application;
 using PermitToWork.Application.Abstractions;
@@ -18,6 +19,9 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+// Turns Permit.ExpireIfElapsed from tested-but-unreachable code into something that runs.
+builder.Services.AddHostedService<PermitExpiryWorker>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();

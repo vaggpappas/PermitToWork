@@ -29,6 +29,12 @@ public interface IPermitService
 
     Task RemoveEquipmentAsync(Guid id, Guid equipmentId, CancellationToken cancellationToken = default);
 
+    Task<Guid> AttachDocumentAsync(Guid id, DocumentUpload upload, CancellationToken cancellationToken = default);
+
+    Task<DocumentDownload> GetDocumentAsync(Guid id, Guid documentId, CancellationToken cancellationToken = default);
+
+    Task RemoveDocumentAsync(Guid id, Guid documentId, CancellationToken cancellationToken = default);
+
     Task SubmitAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task ApproveAsync(Guid id, ApprovePermitRequest request, CancellationToken cancellationToken = default);
@@ -57,6 +63,7 @@ public sealed class PermitService(
     IPermitRepository permits,
     IFacilityApproverRepository panels,
     IEmployeeRepository employees,
+    IFileStorage files,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork) : IPermitService
 {
@@ -180,6 +187,69 @@ public sealed class PermitService(
 
         permit.RemoveEquipment(equipmentId, actor);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<Guid> AttachDocumentAsync(
+        Guid id,
+        DocumentUpload upload,
+        CancellationToken cancellationToken = default)
+    {
+        var actor = RequireCurrentEmployee();
+        var permit = await RequireAsync(id, cancellationToken);
+
+        // Checked before a byte is written. Saving first and validating after would mean an
+        // oversized file has already cost the disk space it was rejected for.
+        DocumentPolicy.EnsureAcceptable(upload.FileName, upload.ContentType, upload.Length);
+
+        var storageKey = await files.SaveAsync(upload.Content, upload.FileName, cancellationToken);
+
+        try
+        {
+            var document = permit.AttachDocument(
+                actor, upload.FileName, upload.ContentType, upload.Length, storageKey);
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return document.Id;
+        }
+        catch
+        {
+            // The bytes are on disk but the row will not be. Without this, a permit that
+            // refuses the attachment leaves an orphan file nobody can reach or account for.
+            await files.DeleteAsync(storageKey, CancellationToken.None);
+            throw;
+        }
+    }
+
+    public async Task<DocumentDownload> GetDocumentAsync(
+        Guid id,
+        Guid documentId,
+        CancellationToken cancellationToken = default)
+    {
+        // Through the permit, not by document id alone — so the company scope that governs
+        // the permit governs its attachments too. A document is not reachable by guessing
+        // its id.
+        var permit = await RequireAsync(id, cancellationToken);
+
+        var document = permit.Documents.SingleOrDefault(d => d.Id == documentId)
+                       ?? throw new NotFoundException("Document", documentId);
+
+        var content = await files.OpenAsync(document.StorageKey, cancellationToken)
+                      ?? throw new NotFoundException("Document file", documentId);
+
+        return new DocumentDownload(content, document.FileName, document.ContentType);
+    }
+
+    public async Task RemoveDocumentAsync(Guid id, Guid documentId, CancellationToken cancellationToken = default)
+    {
+        var actor = RequireCurrentEmployee();
+        var permit = await RequireAsync(id, cancellationToken);
+
+        var removed = permit.RemoveDocument(documentId, actor);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Only after the row is gone. The other order risks deleting the file and then
+        // failing to save, leaving a document row pointing at nothing.
+        await files.DeleteAsync(removed.StorageKey, cancellationToken);
     }
 
     public async Task SubmitAsync(Guid id, CancellationToken cancellationToken = default)

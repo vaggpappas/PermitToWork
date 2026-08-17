@@ -25,6 +25,20 @@ public interface IPermitRepository
         Guid? currentEmployeeId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Every permit still live whose window has closed, for the expiry sweep.
+    /// <para>
+    /// Deliberately outside the company scope. A background job is not a user: it has no
+    /// login, no employee record and therefore no company, so the ordinary filter would
+    /// hide every row from it and the sweep would silently do nothing. This is the one read
+    /// in the application that is meant to see everything, and it is a separate method so
+    /// that saying so is impossible to miss.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<Permit>> FindElapsedAsync(
+        DateTimeOffset asOf,
+        CancellationToken cancellationToken = default);
+
     /// <summary>The next number for a permit type, e.g. HW-2026-0001.</summary>
     Task<string> NextNumberAsync(string permitTypeCode, int year, CancellationToken cancellationToken = default);
 

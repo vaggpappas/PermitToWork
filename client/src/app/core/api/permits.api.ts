@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  DocumentPolicy,
   FacilityApprover,
   Lookup,
   PagedResult,
@@ -91,6 +92,30 @@ export class PermitsApi {
 
   removeEquipment(id: string, equipmentId: string): Observable<void> {
     return this.http.delete<void>(`/api/permits/${id}/equipment/${equipmentId}`);
+  }
+
+  /* -------------------------------------------------------------- documents */
+
+  /** The limits, asked for rather than hard-coded, so the hint cannot contradict the server. */
+  documentPolicy(): Observable<DocumentPolicy> {
+    return this.http.get<DocumentPolicy>('/api/permits/document-policy');
+  }
+
+  attachDocument(id: string, file: File): Observable<{ id: string }> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+
+    // No Content-Type header: the browser must set it, because only the browser knows the
+    // multipart boundary it is about to generate.
+    return this.http.post<{ id: string }>(`/api/permits/${id}/documents`, body);
+  }
+
+  downloadDocument(id: string, documentId: string): Observable<Blob> {
+    return this.http.get(`/api/permits/${id}/documents/${documentId}`, { responseType: 'blob' });
+  }
+
+  removeDocument(id: string, documentId: string): Observable<void> {
+    return this.http.delete<void>(`/api/permits/${id}/documents/${documentId}`);
   }
 
   /* ------------------------------------------------------------- lifecycle */

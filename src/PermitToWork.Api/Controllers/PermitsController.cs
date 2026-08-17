@@ -20,7 +20,7 @@ namespace PermitToWork.Api.Controllers;
 [Route("api/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public sealed class PermitsController(IPermitService permits) : ControllerBase
+public sealed class PermitsController(IPermitService permits, IPermitExpiryService expiry) : ControllerBase
 {
     /// <summary>Who may raise and write permits.</summary>
     private const string AuthorRoles =
@@ -144,6 +144,83 @@ public sealed class PermitsController(IPermitService permits) : ControllerBase
 
     #endregion
 
+    #region Documents
+
+    /// <summary>
+    /// What may be attached, so the client can say so before somebody picks the wrong file.
+    /// <para>
+    /// The limits are served rather than duplicated in the browser: the hint above the file
+    /// picker and the rule the server enforces are then the same sentence.
+    /// </para>
+    /// </summary>
+    [HttpGet("/api/permits/document-policy")]
+    [ProducesResponseType<DocumentPolicyDto>(StatusCodes.Status200OK)]
+    public ActionResult<DocumentPolicyDto> DocumentPolicyInfo() => Ok(DocumentPolicy.Describe());
+
+    /// <summary>Attaches a method statement, risk assessment, drawing or photograph.</summary>
+    /// <response code="409">Too large, empty, or not a permitted kind of file.</response>
+    [HttpPost("{id:guid}/documents")]
+    [Authorize(Roles = AuthorRoles)]
+    // A little over the policy limit, so an oversized file is refused by the policy with a
+    // readable message rather than by Kestrel with a bare 413.
+    [RequestSizeLimit(DocumentPolicy.MaxBytes + 512 * 1024)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AttachDocument(
+        Guid id,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "No file",
+                Detail = "Choose a file to attach.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        await using var content = file.OpenReadStream();
+
+        var documentId = await permits.AttachDocumentAsync(
+            id,
+            new DocumentUpload(file.FileName, file.ContentType, file.Length, content),
+            cancellationToken);
+
+        return CreatedAtAction(nameof(Get), new { id }, new { id = documentId });
+    }
+
+    /// <summary>Downloads an attachment.</summary>
+    [HttpGet("{id:guid}/documents/{documentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadDocument(
+        Guid id,
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        var document = await permits.GetDocumentAsync(id, documentId, cancellationToken);
+
+        // The stored content type, never one the caller asked for, and the original file
+        // name only as a download name — it never touches a path.
+        return File(document.Content, document.ContentType, document.FileName);
+    }
+
+    [HttpDelete("{id:guid}/documents/{documentId:guid}")]
+    [Authorize(Roles = AuthorRoles)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveDocument(
+        Guid id,
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        await permits.RemoveDocumentAsync(id, documentId, cancellationToken);
+        return NoContent();
+    }
+
+    #endregion
+
     #region Lifecycle
 
     /// <summary>
@@ -241,6 +318,23 @@ public sealed class PermitsController(IPermitService permits) : ControllerBase
     {
         await permits.CancelAsync(id, request, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Runs the expiry sweep now, rather than waiting for the timer.
+    /// <para>
+    /// The same work the background worker does every fifteen minutes. It exists so the
+    /// behaviour can be demonstrated and tested without waiting, and so an administrator
+    /// can force it after a long outage.
+    /// </para>
+    /// </summary>
+    [HttpPost("expire-elapsed")]
+    [Authorize(Roles = ApplicationRoles.Administrator)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ExpireElapsed(CancellationToken cancellationToken)
+    {
+        var expired = await expiry.ExpireElapsedAsync(cancellationToken);
+        return Ok(new { expired });
     }
 
     #endregion

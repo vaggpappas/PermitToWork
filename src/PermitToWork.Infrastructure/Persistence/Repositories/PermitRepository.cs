@@ -275,6 +275,21 @@ internal sealed class PermitRepository(
             people.TryGetValue(employeeId, out var found) ? found.FullName : "Unknown";
     }
 
+    public async Task<IReadOnlyList<Permit>> FindElapsedAsync(
+        DateTimeOffset asOf,
+        CancellationToken cancellationToken = default) =>
+        // Not Visible, and IgnoreQueryFilters as well. The sweep runs with no signed-in
+        // user, so the company scope resolves to Nothing and both would return an empty
+        // set — the job would run happily every quarter of an hour and never expire a thing.
+        await context.Permits
+            .IgnoreQueryFilters()
+            .Include(p => p.Events)
+            .Where(p => p.Status == PermitStatus.Pending
+                        || p.Status == PermitStatus.Active
+                        || p.Status == PermitStatus.Suspended)
+            .Where(p => p.Validity.End <= asOf)
+            .ToListAsync(cancellationToken);
+
     public async Task<string> NextNumberAsync(
         string permitTypeCode,
         int year,

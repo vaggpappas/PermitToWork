@@ -12,6 +12,7 @@ using PermitToWork.Application.Accounts;
 using PermitToWork.Infrastructure.Identity;
 using PermitToWork.Infrastructure.Persistence;
 using PermitToWork.Infrastructure.Persistence.Repositories;
+using PermitToWork.Infrastructure.Storage;
 
 namespace PermitToWork.Infrastructure;
 
@@ -56,6 +57,8 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<JwtTokenFactory>();
+
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
 
         services.AddScoped<CounterStore>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();

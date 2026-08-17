@@ -243,6 +243,15 @@ export interface PermitDetail {
   canCancel: boolean;
 }
 
+/** Served by the API so the hint above the file picker is the rule the server enforces. */
+export interface DocumentPolicy {
+  maxBytes: number;
+  maxMegabytes: number;
+  allowedExtensions: string[];
+  accept: string;
+  description: string;
+}
+
 export interface PermitType {
   id: string;
   code: string;

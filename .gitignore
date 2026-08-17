@@ -26,6 +26,10 @@ client/.angular/
 npm-debug.log*
 yarn-error.log*
 
+## Uploaded permit attachments — user data, never source
+uploads/
+src/PermitToWork.Api/uploads/
+
 ## Environment & secrets
 .env
 .env.*

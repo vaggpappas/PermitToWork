@@ -1,0 +1,1077 @@
+{
+  "info": {
+    "_postman_id": "b2f4c8a1-5d7e-4a3b-9c62-8e1f0d4a7b39",
+    "name": "Permit To Work — Permits",
+    "description": "The permit lifecycle end to end, including the rules that make it a safety document rather than a form.\n\n**Before running:** SQL Server up, migrations applied, API running, and SSL certificate verification switched OFF in Postman settings.\n\nSelf-contained — it creates its own people, so it does not depend on the Phase 1 collection having run. Run the whole thing top to bottom with the Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Dates relative to now, so the collection never goes stale. A permit window in",
+          "// the past is what the expiry folder needs; one in the future is what everything",
+          "// else needs.",
+          "const iso = (days) => new Date(Date.now() + days * 86400000).toISOString();",
+          "",
+          "pm.collectionVariables.set('tomorrow', iso(1));",
+          "pm.collectionVariables.set('inThreeDays', iso(3));",
+          "pm.collectionVariables.set('threeDaysAgo', iso(-3));",
+          "pm.collectionVariables.set('yesterday', iso(-1));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7188" },
+    { "key": "accessToken", "value": "" },
+    { "key": "runId", "value": "" },
+    { "key": "adminEmployeeId", "value": "" },
+    { "key": "hotWorkTypeId", "value": "" },
+    { "key": "coldWorkTypeId", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "facilityId", "value": "" },
+    { "key": "buildingId", "value": "" },
+    { "key": "locationId", "value": "" },
+    { "key": "companyId", "value": "" },
+    { "key": "tradeId", "value": "" },
+    { "key": "hotWorkCertificationTypeId", "value": "" },
+    { "key": "welderId", "value": "" },
+    { "key": "labourerId", "value": "" },
+    { "key": "permitId", "value": "" },
+    { "key": "stalePermitId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Sign in",
+      "item": [
+        {
+          "name": "Login as administrator",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@permittowork.local\",\n  \"password\": \"Admin!23456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('accessToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const me = pm.response.json();",
+                  "pm.test('the administrator has an employee record', () => pm.expect(me.employeeId).to.be.a('string'));",
+                  "pm.collectionVariables.set('adminEmployeeId', me.employeeId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Reference data",
+      "description": "Captures the ids the rest of the collection needs.",
+      "item": [
+        {
+          "name": "Permit types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/permit-types", "host": ["{{baseUrl}}"], "path": ["api", "permit-types"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const types = pm.response.json();",
+                  "const hotWork = types.find(t => t.code === 'HW');",
+                  "const coldWork = types.find(t => t.code === 'CW');",
+                  "",
+                  "pm.test('Hot Work demands a certification', () =>",
+                  "  pm.expect(hotWork.requiredCertifications).to.include('Hot Work'));",
+                  "",
+                  "pm.test('Cold Work demands none', () =>",
+                  "  pm.expect(coldWork.requiredCertifications).to.be.empty);",
+                  "",
+                  "pm.collectionVariables.set('hotWorkTypeId', hotWork.id);",
+                  "pm.collectionVariables.set('coldWorkTypeId', coldWork.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/categories", "host": ["{{baseUrl}}"], "path": ["api", "categories"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const categories = pm.response.json();",
+                  "pm.expect(categories.length).to.be.above(0);",
+                  "pm.collectionVariables.set('categoryId', (categories.find(c => c.code === 'MAINT') || categories[0]).id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Facilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/facilities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lookups", "facilities"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('facilityId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buildings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/facilities/{{facilityId}}/buildings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lookups", "facilities", "{{facilityId}}", "buildings"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('buildingId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/buildings/{{buildingId}}/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lookups", "buildings", "{{buildingId}}", "locations"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('locationId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Companies, trades and certification types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/companies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lookups", "companies"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('companyId', pm.response.json()[0].id);",
+                  "",
+                  "// Two more lookups chained from here rather than as their own requests, to",
+                  "// keep the folder about ids rather than about HTTP.",
+                  "const auth = { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') };",
+                  "const base = pm.collectionVariables.get('baseUrl');",
+                  "",
+                  "pm.sendRequest({ url: base + '/api/lookups/trades', header: auth }, (err, res) => {",
+                  "  if (!err) {",
+                  "    const trades = res.json();",
+                  "    pm.collectionVariables.set('tradeId', (trades.find(t => t.code === 'WELD3') || trades[0]).id);",
+                  "  }",
+                  "});",
+                  "",
+                  "pm.sendRequest({ url: base + '/api/lookups/certification-types', header: auth }, (err, res) => {",
+                  "  if (!err) {",
+                  "    const types = res.json();",
+                  "    const hot = types.find(t => t.code === 'HOTWORK') || types[0];",
+                  "    pm.collectionVariables.set('hotWorkCertificationTypeId', hot.id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. People for the demonstration",
+      "description": "Creates a certified welder and an uncertified labourer, so the certification rule can be shown both firing and not firing.",
+      "item": [
+        {
+          "name": "Create a welder",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Luis\",\n  \"lastName\": \"Ferreira\",\n  \"email\": \"luis.ferreira.{{runId}}@example.test\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"Welder\",\n  \"hireDate\": \"2021-04-12\",\n  \"dateOfBirth\": \"1988-06-21\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh suffix per run, so email addresses stay unique and the collection can",
+                  "// be run repeatedly without tripping the 409 on duplicate emails.",
+                  "pm.collectionVariables.set('runId', Date.now().toString().slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('welderId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Give the welder a Hot Work certificate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificationTypeId\": \"{{hotWorkCertificationTypeId}}\",\n  \"issuedBy\": \"Hellenic Welding Institute\",\n  \"issuedOn\": \"2024-01-15\",\n  \"expiresOn\": \"2030-01-15\",\n  \"referenceNumber\": \"HW-99213\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{welderId}}/certifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{welderId}}", "certifications"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('201 Created', () => pm.response.to.have.status(201));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a labourer with no certificates",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Marta\",\n  \"lastName\": \"Silva\",\n  \"email\": \"marta.silva.{{runId}}@example.test\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"General Operative\",\n  \"hireDate\": \"2023-09-01\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('labourerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Raising a permit",
+      "item": [
+        {
+          "name": "Raise a hot work permit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permitTypeId\": \"{{hotWorkTypeId}}\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"workDescription\": \"Replace the flange on the north header.\",\n  \"locationId\": \"{{locationId}}\",\n  \"validFrom\": \"{{tomorrow}}\",\n  \"validTo\": \"{{inThreeDays}}\",\n  \"receiverId\": \"{{welderId}}\",\n  \"project\": \"Unit 3 Turnaround\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/permits", "host": ["{{baseUrl}}"], "path": ["api", "permits"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('permitId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The number was generated from the type and the year",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const permit = pm.response.json();",
+                  "",
+                  "pm.test('numbered HW-<year>-<sequence>', () =>",
+                  "  pm.expect(permit.permitNumber).to.match(/^HW-\\d{4}-\\d{4}$/));",
+                  "",
+                  "pm.test('starts as a draft', () => pm.expect(permit.status).to.eql('Draft'));",
+                  "",
+                  "pm.test('the requirements were copied onto it', () =>",
+                  "  pm.expect(permit.requiredCertifications).to.include('Hot Work'));",
+                  "",
+                  "pm.test('cannot be submitted with nobody on it', () =>",
+                  "  pm.expect(permit.canSubmit).to.be.false);",
+                  "",
+                  "pm.test('no issuer until somebody approves', () =>",
+                  "  pm.expect(permit.issuedById).to.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submitting with no crew is refused",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "submit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('an authorisation for nobody is not an authorisation', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('no workers'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. The certification rule",
+      "description": "The reason the Phase 1 certification model exists. This is the folder worth reading.",
+      "item": [
+        {
+          "name": "An uncertified worker is refused",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"{{labourerId}}\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/workers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "workers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "",
+                  "pm.test('names the person and the missing certificate', () => {",
+                  "  const detail = pm.response.json().detail;",
+                  "  pm.expect(detail).to.include('Marta Silva');",
+                  "  pm.expect(detail).to.include('Hot Work');",
+                  "});",
+                  "",
+                  "pm.test('refused for the whole period, not just the start', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('whole permit period'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The certified welder is accepted",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{welderId}}\",\n  \"note\": \"Hot work certified\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/workers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "workers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add some equipment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Angle grinder\",\n  \"identifier\": \"AST-4471\",\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/equipment",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "equipment"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('201 Created', () => pm.response.to.have.status(201));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Now it can be submitted",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const permit = pm.response.json();",
+                  "pm.test('one worker on the crew', () => pm.expect(permit.workers.length).to.eql(1));",
+                  "pm.test('one item of equipment', () => pm.expect(permit.equipment.length).to.eql(1));",
+                  "pm.test('canSubmit is now true', () => pm.expect(permit.canSubmit).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Approval",
+      "item": [
+        {
+          "name": "Submit to the facility panel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "submit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The panel was copied onto the permit",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const permit = pm.response.json();",
+                  "pm.test('now Pending', () => pm.expect(permit.status).to.eql('Pending'));",
+                  "pm.test('has approvers', () => pm.expect(permit.approvals.length).to.be.above(0));",
+                  "pm.test('the crew is frozen while people sign', () =>",
+                  "  pm.expect(permit.canChangeResources).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The crew cannot be changed while Pending",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"{{labourerId}}\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/workers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "workers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('swapping the crew would make a signature meaningless', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('cannot be changed'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve it",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"comment\": \"Isolation confirmed, fire watch briefed.\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "approve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "One decisive signature activated it",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const permit = pm.response.json();",
+                  "pm.test('now Active', () => pm.expect(permit.status).to.eql('Active'));",
+                  "",
+                  "pm.test('the issuer is whoever signed last', () =>",
+                  "  pm.expect(permit.issuedByName).to.be.a('string').and.not.empty);",
+                  "",
+                  "pm.test('the crew reopens once work is live', () =>",
+                  "  pm.expect(permit.canChangeResources).to.be.true);",
+                  "",
+                  "pm.test('the history records every step', () => {",
+                  "  const kinds = permit.history.map(e => e.kind);",
+                  "  pm.expect(kinds).to.include.members(['Created', 'WorkerAdded', 'Submitted', 'Approved', 'Activated']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Live work",
+      "item": [
+        {
+          "name": "Crews change once work is live",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"{{labourerId}}\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/workers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "workers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Still refused — but now by the certification rule rather than by the status.",
+                  "pm.test('422, and for the right reason', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().detail).to.include('Hot Work');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Suspend the work",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Gas alarm on the unit.\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/suspend",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "suspend"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resume it",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "resume"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Close it — only the creator may",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"Flange replaced and pressure tested.\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}", "close"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The administrator raised this permit, so they may close it. Anybody else",
+                  "// would get a 422 from the aggregate, whatever their role.",
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A closed permit is finished",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{permitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{permitId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const permit = pm.response.json();",
+                  "pm.test('Closed', () => pm.expect(permit.status).to.eql('Closed'));",
+                  "pm.test('nothing further is offered', () => {",
+                  "  pm.expect(permit.canClose).to.be.false;",
+                  "  pm.expect(permit.canSuspend).to.be.false;",
+                  "  pm.expect(permit.canCancel).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Approval panels",
+      "item": [
+        {
+          "name": "The facility panel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/facilities/{{facilityId}}/approvers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facilities", "{{facilityId}}", "approvers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const panel = pm.response.json();",
+                  "pm.test('somebody can sign alone', () =>",
+                  "  pm.expect(panel.some(a => a.isDecisive)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Seating the same person twice is refused",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{adminEmployeeId}}\",\n  \"isDecisive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/facilities/{{facilityId}}/approvers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facilities", "{{facilityId}}", "approvers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('two seats is not a stronger approval', () =>",
+                  "  pm.expect(pm.response.json().detail).to.include('already on this'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Expiry",
+      "description": "A permit whose window has closed must not keep reading as live work. This is what the background sweep does every fifteen minutes.",
+      "item": [
+        {
+          "name": "Raise a permit whose window has already passed",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permitTypeId\": \"{{coldWorkTypeId}}\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"workDescription\": \"Routine inspection of the pump house, backdated for the expiry demonstration.\",\n  \"locationId\": \"{{locationId}}\",\n  \"validFrom\": \"{{threeDaysAgo}}\",\n  \"validTo\": \"{{yesterday}}\",\n  \"receiverId\": \"{{welderId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/permits", "host": ["{{baseUrl}}"], "path": ["api", "permits"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('stalePermitId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crew it — cold work demands no certificate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"{{labourerId}}\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{stalePermitId}}/workers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{stalePermitId}}", "workers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The same person the hot work permit refused. The rule fires per permit type,",
+                  "// not per person.",
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit and approve it",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{stalePermitId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{stalePermitId}}", "submit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "",
+                  "const base = pm.collectionVariables.get('baseUrl');",
+                  "const id = pm.collectionVariables.get('stalePermitId');",
+                  "",
+                  "pm.sendRequest({",
+                  "  url: base + '/api/permits/' + id + '/approve',",
+                  "  method: 'POST',",
+                  "  header: {",
+                  "    Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken'),",
+                  "    'Content-Type': 'application/json'",
+                  "  },",
+                  "  body: { mode: 'raw', raw: '{}' }",
+                  "}, (err, res) => {",
+                  "  pm.test('approved to Active', () => pm.expect(res.code).to.eql(204));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run the expiry sweep",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/expire-elapsed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "expire-elapsed"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('it caught at least the backdated permit', () =>",
+                  "  pm.expect(pm.response.json().expired).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The stale permit is Expired",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/{{stalePermitId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "{{stalePermitId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const permit = pm.response.json();",
+                  "pm.test('Expired', () => pm.expect(permit.status).to.eql('Expired'));",
+                  "",
+                  "pm.test('expiry is nobody\\u2019s doing', () => {",
+                  "  const expiry = permit.history.find(e => e.kind === 'Expired');",
+                  "  pm.expect(expiry).to.not.be.undefined;",
+                  "  pm.expect(expiry.actorName).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Running the sweep again changes nothing",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/expire-elapsed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "expire-elapsed"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('idempotent \\u2014 already-expired permits are not touched again', () =>",
+                  "  pm.expect(pm.response.json().expired).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
