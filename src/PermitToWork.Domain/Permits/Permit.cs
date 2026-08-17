@@ -28,7 +28,7 @@ public class Permit : Entity
     public Permit(
         PermitNumber number,
         Guid permitTypeId,
-        Guid taskGroupId,
+        Guid categoryId,
         string workDescription,
         Guid facilityId,
         Guid locationId,
@@ -36,12 +36,12 @@ public class Permit : Entity
         Guid createdById,
         Guid receiverId,
         IEnumerable<CertificationRequirement> requiredCertifications,
-        string? workPackage = null,
+        string? project = null,
         string? notes = null)
     {
         Number = number;
         PermitTypeId = Guard.Required(permitTypeId, "Permit type");
-        TaskGroupId = Guard.Required(taskGroupId, "Task group");
+        CategoryId = Guard.Required(categoryId, "Category");
         WorkDescription = Guard.Required(workDescription, "Work description", 2000);
 
         // The facility is stored as well as the location, even though a location knows its
@@ -54,7 +54,7 @@ public class Permit : Entity
         Validity = validity;
         CreatedById = Guard.Required(createdById, "Creator");
         ReceiverId = Guard.Required(receiverId, "Receiver");
-        WorkPackage = Guard.Optional(workPackage, "Work package", 150);
+        Project = Guard.Optional(project, "Project", 150);
         Notes = Guard.Optional(notes, "Notes", 2000);
         Status = PermitStatus.Draft;
 
@@ -68,8 +68,8 @@ public class Permit : Entity
 
     public PermitNumber Number { get; private set; } = null!;
     public Guid PermitTypeId { get; private set; }
-    public Guid TaskGroupId { get; private set; }
-    public string? WorkPackage { get; private set; }
+    public Guid CategoryId { get; private set; }
+    public string? Project { get; private set; }
     public string WorkDescription { get; private set; } = null!;
     public Guid FacilityId { get; private set; }
     public Guid LocationId { get; private set; }
@@ -136,24 +136,24 @@ public class Permit : Entity
 
     public void UpdateContent(
         Guid actorId,
-        Guid taskGroupId,
+        Guid categoryId,
         string workDescription,
         Guid facilityId,
         Guid locationId,
         DateTimeRange validity,
         Guid receiverId,
-        string? workPackage,
+        string? project,
         string? notes)
     {
         RequireEditable();
 
-        TaskGroupId = Guard.Required(taskGroupId, "Task group");
+        CategoryId = Guard.Required(categoryId, "Category");
         WorkDescription = Guard.Required(workDescription, "Work description", 2000);
         FacilityId = Guard.Required(facilityId, "Facility");
         LocationId = Guard.Required(locationId, "Location");
         Validity = validity;
         ReceiverId = Guard.Required(receiverId, "Receiver");
-        WorkPackage = Guard.Optional(workPackage, "Work package", 150);
+        Project = Guard.Optional(project, "Project", 150);
         Notes = Guard.Optional(notes, "Notes", 2000);
 
         Record(PermitEventKind.ContentChanged, actorId, null);

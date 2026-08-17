@@ -1,0 +1,211 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>{{ isEdit() ? 'Edit permit' : 'Raise a permit' }}</h1>
+      <p class="subtitle">
+        @if (isEdit()) {
+          Only a draft can be edited — once submitted, what was approved must be what is performed.
+        } @else {
+          The permit number is generated from the type and the year when you save.
+        }
+      </p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="card">
+      <div class="card-head">
+        <h2>Job definition</h2>
+        <p class="legend"><span class="star">*</span> required</p>
+      </div>
+
+      <div class="field-grid three">
+        <div>
+          <label for="permitTypeId" class="required">Permit type</label>
+          <select id="permitTypeId" formControlName="permitTypeId">
+            <option value="">Choose…</option>
+            @for (type of permitTypes(); track type.id) {
+              <option [value]="type.id">{{ type.code }} — {{ type.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="categoryId" class="required">Category</label>
+          <select id="categoryId" formControlName="categoryId">
+            <option value="">Choose…</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="project">Project</label>
+          <input id="project" formControlName="project" placeholder="Unit 3 Turnaround" />
+        </div>
+      </div>
+
+      @if (requiredCertifications().length > 0) {
+        <div class="alert info requirement">
+          <strong>This type requires:</strong>
+          {{ requiredCertifications().join(', ') }}. Anyone added to the crew must hold a valid
+          certificate covering the whole permit period, or the server will refuse them.
+        </div>
+      }
+
+      <div class="field-full">
+        <label for="workDescription" class="required">Work description</label>
+        <textarea
+          id="workDescription"
+          formControlName="workDescription"
+          rows="3"
+          placeholder="Replace the flange on the north header."
+        ></textarea>
+        @if (form.controls.workDescription.touched && form.controls.workDescription.invalid) {
+          <p class="field-error">Describe the work in at least ten characters.</p>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Where and when</h2>
+      </div>
+
+      <div class="field-grid three">
+        <div>
+          <label for="facilityId" class="required">Facility</label>
+          <select
+            id="facilityId"
+            formControlName="facilityId"
+            (change)="onFacilityChange($any($event.target).value)"
+          >
+            <option value="">Choose…</option>
+            @for (facility of facilities(); track facility.id) {
+              <option [value]="facility.id">{{ facility.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="buildingId" class="required">Building or unit</label>
+          <select
+            id="buildingId"
+            formControlName="buildingId"
+            [disabled]="buildings().length === 0"
+            (change)="onBuildingChange($any($event.target).value)"
+          >
+            <option value="">Choose…</option>
+            @for (building of buildings(); track building.id) {
+              <option [value]="building.id">{{ building.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="locationId" class="required">Location</label>
+          <select id="locationId" formControlName="locationId" [disabled]="locations().length === 0">
+            <option value="">Choose…</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- The two ends of one period, so they sit together and share a caption. Split across
+           a wrapping grid they read as two unrelated dates. -->
+      <fieldset class="period">
+        <legend>Dates of permit</legend>
+
+        <div class="period-fields">
+          <div>
+            <label for="validFrom" class="required">From</label>
+            <input id="validFrom" type="datetime-local" formControlName="validFrom" />
+          </div>
+
+          <span class="period-arrow" aria-hidden="true">→</span>
+
+          <div>
+            <label for="validTo" class="required">To</label>
+            <input id="validTo" type="datetime-local" formControlName="validTo" />
+          </div>
+        </div>
+
+        <p class="muted period-note">
+          Certificates are checked against both ends. Somebody whose ticket lapses partway
+          through will be refused.
+        </p>
+      </fieldset>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Responsibility</h2>
+      </div>
+
+      <div class="field-grid two">
+        <div>
+          <label for="receiverId" class="required">Receiver</label>
+          <select id="receiverId" formControlName="receiverId">
+            <option value="">Choose…</option>
+            @for (person of people(); track person.id) {
+              <option [value]="person.id">{{ person.fullName }} — {{ person.jobTitle }}</option>
+            }
+          </select>
+          <p class="hint">Accountable for the work being carried out properly on site.</p>
+        </div>
+
+        <div>
+          <label>Approvers</label>
+          <p class="hint boxed">
+            The facility's standing panel. You do not choose them — the permit goes to them
+            when you submit it.
+          </p>
+        </div>
+      </div>
+
+      <div class="field-full">
+        <label for="notes">Notes</label>
+        <textarea id="notes" formControlName="notes" rows="2"></textarea>
+      </div>
+    </div>
+
+    @if (!isEdit()) {
+      <!-- Says what happens next. The crew and equipment live on the permit page because
+           both need the permit to exist first: a worker is attached to a permit id, and the
+           certification check compares their certificate against this permit's dates. -->
+      <div class="card next-step">
+        <h2>Next: the crew and the equipment</h2>
+        <p class="muted">
+          Saving this draft opens the permit page, where you add the workers, the equipment
+          and any documents — then submit it for approval.
+        </p>
+        <ol class="steps">
+          <li><strong>Create the draft</strong> — the permit number is generated</li>
+          <li><strong>Add the crew</strong> — certificates are checked against the dates above</li>
+          <li><strong>Add equipment</strong> and attach documents</li>
+          <li><strong>Submit for approval</strong> — it goes to the facility's panel</li>
+        </ol>
+      </div>
+    }
+
+    <div class="row form-actions">
+      <button type="submit" [disabled]="saving()">
+        @if (saving()) {
+          Saving…
+        } @else if (isEdit()) {
+          Save changes
+        } @else {
+          Create draft and add the crew
+        }
+      </button>
+      <button type="button" class="secondary" (click)="cancel()">Cancel</button>
+    </div>
+  </form>
+</div>

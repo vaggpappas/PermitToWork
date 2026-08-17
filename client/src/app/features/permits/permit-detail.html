@@ -1,0 +1,367 @@
+<div class="page">
+  @if (loading()) {
+    <p class="empty">Loading…</p>
+  } @else if (error()) {
+    <div class="alert error">{{ error() }}</div>
+    <a routerLink="/permits">Back to permits</a>
+  } @else if (permit(); as p) {
+    <div class="page-header">
+      <div>
+        <h1>{{ p.permitNumber }}</h1>
+        <p class="subtitle">
+          {{ p.permitTypeName }} · {{ p.categoryName }} · {{ p.locationName }}, {{ p.buildingName }}
+          <span class="badge {{ p.status.toLowerCase() }}">{{ p.status }}</span>
+        </p>
+      </div>
+
+      <!-- Every button here is gated on a flag the server computed from the aggregate, so
+           what is offered and what is permitted come from the same place. -->
+      <div class="row actions">
+        @if (p.canEdit) {
+          <a [routerLink]="['/permits', p.id, 'edit']" class="button-link">Edit draft</a>
+        }
+        @if (p.canSubmit) {
+          <button type="button" [disabled]="busy()" (click)="submit()">Submit for approval</button>
+        }
+        @if (myApproval()) {
+          <button type="button" [disabled]="busy()" (click)="approve()">Approve</button>
+          <button type="button" class="danger" [disabled]="busy()" (click)="reject()">Reject</button>
+        }
+        @if (p.canSuspend) {
+          <button type="button" class="secondary" [disabled]="busy()" (click)="suspend()">Suspend</button>
+        }
+        @if (p.canResume) {
+          <button type="button" class="secondary" [disabled]="busy()" (click)="resume()">Resume</button>
+        }
+        @if (p.canClose && isCreator()) {
+          <button type="button" [disabled]="busy()" (click)="close()">Close the permit</button>
+        }
+        @if (p.canCancel) {
+          <button type="button" class="danger" [disabled]="busy()" (click)="cancel()">Cancel</button>
+        }
+      </div>
+    </div>
+
+    @if (actionError()) {
+      <div class="alert error">{{ actionError() }}</div>
+    }
+
+    @if (p.statusReason) {
+      <div class="alert warn"><strong>{{ p.status }}:</strong> {{ p.statusReason }}</div>
+    }
+
+    @if (p.canClose && !isCreator()) {
+      <div class="alert info">
+        Only {{ p.createdByName }}, who raised this permit, can close it.
+      </div>
+    }
+
+    <div class="card">
+      <h2>The work</h2>
+      <p class="description">{{ p.workDescription }}</p>
+
+      <dl class="facts">
+        <div>
+          <dt>Project</dt>
+          <dd>{{ p.project ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Valid from</dt>
+          <dd>{{ p.validFrom | date: settings.dateFormat() }} {{ p.validFrom | date: 'HH:mm' }}</dd>
+        </div>
+        <div>
+          <dt>Valid to</dt>
+          <dd>{{ p.validTo | date: settings.dateFormat() }} {{ p.validTo | date: 'HH:mm' }}</dd>
+        </div>
+        <div>
+          <dt>Facility</dt>
+          <dd>{{ p.facilityName }}</dd>
+        </div>
+        <div>
+          <dt>Raised by</dt>
+          <dd>{{ p.createdByName }}</dd>
+        </div>
+        <div>
+          <dt>Receiver</dt>
+          <dd>{{ p.receiverName }}</dd>
+        </div>
+        <div>
+          <dt>Issued by</dt>
+          <dd>
+            {{ p.issuedByName ?? '—' }}
+            @if (p.issuedByName) {
+              <small class="muted">the approval that completed it</small>
+            }
+          </dd>
+        </div>
+      </dl>
+
+      @if (p.notes) {
+        <p class="muted" style="margin-top: 1rem"><strong>Notes:</strong> {{ p.notes }}</p>
+      }
+
+      @if (p.requiredCertifications.length > 0) {
+        <div class="alert info" style="margin-top: 1rem; margin-bottom: 0">
+          <strong>Required of every worker:</strong> {{ p.requiredCertifications.join(', ') }}.
+          Recorded when this permit was raised — later changes to the permit type do not
+          alter it.
+        </div>
+      }
+    </div>
+
+    <div class="card">
+      <h2>Approvals</h2>
+      @if (p.approvals.length === 0) {
+        <p class="empty">Not submitted yet. The facility's panel is attached when you submit.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Approver</th>
+              <th>Decision</th>
+              <th>When</th>
+              <th>Comment</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (approval of p.approvals; track approval.id) {
+              <tr>
+                <td>
+                  {{ approval.approverName }}
+                  @if (approval.isDecisive) {
+                    <span class="badge leader" title="Can activate the permit alone">decisive</span>
+                  }
+                </td>
+                <td><span class="badge {{ approval.decision.toLowerCase() }}">{{ approval.decision }}</span></td>
+                <td>
+                  {{ approval.decidedOn ? (approval.decidedOn | date: settings.dateFormat()) : '—' }}
+                </td>
+                <td class="muted">{{ approval.comment ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom: 0.75rem">
+        <h2 style="margin: 0">Crew ({{ p.workers.length }})</h2>
+        <span class="spacer"></span>
+        @if (p.canChangeResources) {
+          <button type="button" class="secondary small" (click)="addingWorker.set(!addingWorker())">
+            {{ addingWorker() ? 'Cancel' : 'Add worker' }}
+          </button>
+        }
+      </div>
+
+      @if (addingWorker()) {
+        <form [formGroup]="workerForm" (ngSubmit)="addWorker()" style="margin-bottom: 1rem">
+          <div class="row">
+            <div style="flex: 2; min-width: 240px">
+              <label for="employeeId" class="required">Employee</label>
+              <select id="employeeId" formControlName="employeeId">
+                <option value="">Choose…</option>
+                @for (person of addableEmployees(); track person.id) {
+                  <option [value]="person.id">
+                    {{ person.fullName }} — {{ person.tradeName }} ({{ person.companyName }})
+                  </option>
+                }
+              </select>
+            </div>
+            <div style="flex: 1; min-width: 160px">
+              <label for="note">Note</label>
+              <input id="note" formControlName="note" placeholder="Hot work certified" />
+            </div>
+            <button type="submit" [disabled]="busy()">Add</button>
+          </div>
+          @if (p.requiredCertifications.length > 0) {
+            <p class="muted" style="margin-bottom: 0">
+              Anyone without a valid {{ p.requiredCertifications.join(' and ') }} certificate
+              covering the whole period will be refused.
+            </p>
+          }
+        </form>
+      }
+
+      @if (p.workers.length === 0) {
+        <p class="empty">Nobody on the crew yet. A permit cannot be submitted empty.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Badge</th>
+              <th>Name</th>
+              <th>Trade</th>
+              <th>Company</th>
+              <th>Note</th>
+              @if (p.canChangeResources) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (worker of p.workers; track worker.id) {
+              <tr>
+                <td>{{ worker.employeeNumber }}</td>
+                <td>
+                  <a [routerLink]="['/employees', worker.employeeId]">{{ worker.fullName }}</a>
+                </td>
+                <td>{{ worker.tradeName }}</td>
+                <td>{{ worker.companyName }}</td>
+                <td class="muted">{{ worker.note ?? '—' }}</td>
+                @if (p.canChangeResources) {
+                  <td>
+                    <button
+                      type="button"
+                      class="link small"
+                      [disabled]="busy()"
+                      (click)="removeWorker(worker.employeeId, worker.fullName)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom: 0.75rem">
+        <h2 style="margin: 0">Equipment</h2>
+        <span class="spacer"></span>
+        @if (p.canChangeResources) {
+          <button type="button" class="secondary small" (click)="addingEquipment.set(!addingEquipment())">
+            {{ addingEquipment() ? 'Cancel' : 'Add equipment' }}
+          </button>
+        }
+      </div>
+
+      @if (addingEquipment()) {
+        <form [formGroup]="equipmentForm" (ngSubmit)="addEquipment()" style="margin-bottom: 1rem">
+          <div class="row">
+            <div style="flex: 2; min-width: 220px">
+              <label for="description" class="required">Description</label>
+              <input id="description" formControlName="description" placeholder="Angle grinder" />
+            </div>
+            <div style="flex: 1; min-width: 140px">
+              <label for="identifier">Asset number</label>
+              <input id="identifier" formControlName="identifier" />
+            </div>
+            <div style="width: 110px">
+              <label for="quantity" class="required">Quantity</label>
+              <input id="quantity" type="number" min="1" formControlName="quantity" />
+            </div>
+            <button type="submit" [disabled]="busy()">Add</button>
+          </div>
+        </form>
+      }
+
+      @if (p.equipment.length === 0) {
+        <p class="empty">No equipment listed.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Asset number</th>
+              <th>Quantity</th>
+              @if (p.canChangeResources) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of p.equipment; track item.id) {
+              <tr>
+                <td>{{ item.description }}</td>
+                <td class="muted">{{ item.identifier ?? '—' }}</td>
+                <td>{{ item.quantity }}</td>
+                @if (p.canChangeResources) {
+                  <td>
+                    <button
+                      type="button"
+                      class="link small"
+                      [disabled]="busy()"
+                      (click)="removeEquipment(item.id)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom: 0.75rem">
+        <h2 style="margin: 0">Documents</h2>
+        <span class="spacer"></span>
+        <button type="button" class="secondary small" disabled title="Upload is not built yet">
+          Attach a document
+        </button>
+      </div>
+
+      @if (p.documents.length === 0) {
+        <p class="empty">
+          No documents attached.
+          <br />
+          <small>Method statements, risk assessments and drawings will live here.</small>
+        </p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Uploaded by</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (document of p.documents; track document.id) {
+              <tr>
+                <td>{{ document.fileName }}</td>
+                <td class="muted">{{ document.contentType }}</td>
+                <td>{{ (document.sizeInBytes / 1024).toFixed(0) }} KB</td>
+                <td>{{ document.uploadedByName }}</td>
+                <td>{{ document.uploadedOn | date: settings.dateFormat() }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <div class="card">
+      <h2>History</h2>
+      <p class="muted" style="margin-top: -0.5rem">
+        Written by the permit itself on every change. Nothing here can be edited or removed.
+      </p>
+
+      <ol class="history">
+        @for (entry of p.history; track entry.id) {
+          <li>
+            <span class="kind">{{ entry.kind }}</span>
+            <span class="when">
+              {{ entry.occurredOn | date: settings.dateFormat() }} {{ entry.occurredOn | date: 'HH:mm' }}
+            </span>
+            <span class="who">{{ entry.actorName ?? 'the system' }}</span>
+            @if (entry.detail) {
+              <span class="detail">{{ entry.detail }}</span>
+            }
+          </li>
+        }
+      </ol>
+    </div>
+
+    <a routerLink="/permits">← Back to permits</a>
+  }
+</div>

@@ -35,7 +35,7 @@ public interface IPermitRepository
 
     Task<IReadOnlyList<PermitTypeDto>> GetPermitTypesAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<LookupDto>> GetTaskGroupsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<LookupDto>> GetCategoriesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Which facility a location belongs to, via its building.</summary>
     Task<Guid?> GetFacilityOfLocationAsync(Guid locationId, CancellationToken cancellationToken = default);

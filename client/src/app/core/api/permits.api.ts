@@ -1,0 +1,152 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import {
+  FacilityApprover,
+  Lookup,
+  PagedResult,
+  PermitDetail,
+  PermitStatus,
+  PermitSummary,
+  PermitType,
+} from '../models';
+
+export interface PermitSearch {
+  search?: string;
+  status?: PermitStatus;
+  permitTypeId?: string;
+  facilityId?: string;
+  awaitingMyApproval?: boolean;
+  raisedByMe?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreatePermit {
+  permitTypeId: string;
+  categoryId: string;
+  workDescription: string;
+  locationId: string;
+  validFrom: string;
+  validTo: string;
+  receiverId: string;
+  project?: string | null;
+  notes?: string | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class PermitsApi {
+  private readonly http = inject(HttpClient);
+
+  search(query: PermitSearch): Observable<PagedResult<PermitSummary>> {
+    let params = new HttpParams();
+
+    for (const [key, value] of Object.entries(query)) {
+      // false is meaningful for the boolean filters and must not be sent — "not filtering
+      // by it" and "filtering for false" are different requests.
+      if (value !== undefined && value !== null && value !== '' && value !== false) {
+        params = params.set(key, String(value));
+      }
+    }
+
+    return this.http.get<PagedResult<PermitSummary>>('/api/permits', { params });
+  }
+
+  get(id: string): Observable<PermitDetail> {
+    return this.http.get<PermitDetail>(`/api/permits/${id}`);
+  }
+
+  create(body: CreatePermit): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>('/api/permits', body);
+  }
+
+  update(id: string, body: Omit<CreatePermit, 'permitTypeId'>): Observable<void> {
+    return this.http.put<void>(`/api/permits/${id}`, body);
+  }
+
+  permitTypes(): Observable<PermitType[]> {
+    return this.http.get<PermitType[]>('/api/permit-types');
+  }
+
+  categories(): Observable<Lookup[]> {
+    return this.http.get<Lookup[]>('/api/categories');
+  }
+
+  /* ---------------------------------------------------------- crew and kit */
+
+  addWorker(id: string, employeeId: string, note?: string | null): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/workers`, { employeeId, note });
+  }
+
+  removeWorker(id: string, employeeId: string): Observable<void> {
+    return this.http.delete<void>(`/api/permits/${id}/workers/${employeeId}`);
+  }
+
+  addEquipment(
+    id: string,
+    body: { description: string; identifier?: string | null; quantity: number },
+  ): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`/api/permits/${id}/equipment`, body);
+  }
+
+  removeEquipment(id: string, equipmentId: string): Observable<void> {
+    return this.http.delete<void>(`/api/permits/${id}/equipment/${equipmentId}`);
+  }
+
+  /* ------------------------------------------------------------- lifecycle */
+
+  submit(id: string): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/submit`, {});
+  }
+
+  approve(id: string, comment?: string | null): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/approve`, { comment });
+  }
+
+  reject(id: string, reason: string): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/reject`, { reason });
+  }
+
+  suspend(id: string, reason: string): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/suspend`, { reason });
+  }
+
+  resume(id: string): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/resume`, {});
+  }
+
+  close(id: string, note?: string | null): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/close`, { note });
+  }
+
+  cancel(id: string, reason: string): Observable<void> {
+    return this.http.post<void>(`/api/permits/${id}/cancel`, { reason });
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class FacilityApproversApi {
+  private readonly http = inject(HttpClient);
+
+  panel(facilityId: string): Observable<FacilityApprover[]> {
+    return this.http.get<FacilityApprover[]>(`/api/facilities/${facilityId}/approvers`);
+  }
+
+  add(facilityId: string, employeeId: string, isDecisive: boolean): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`/api/facilities/${facilityId}/approvers`, {
+      employeeId,
+      isDecisive,
+    });
+  }
+
+  setDecisive(facilityId: string, approverId: string, isDecisive: boolean): Observable<void> {
+    return this.http.put<void>(
+      `/api/facilities/${facilityId}/approvers/${approverId}/decisive`,
+      { isDecisive },
+    );
+  }
+
+  remove(facilityId: string, approverId: string): Observable<void> {
+    return this.http.delete<void>(`/api/facilities/${facilityId}/approvers/${approverId}`);
+  }
+}

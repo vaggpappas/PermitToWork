@@ -77,14 +77,14 @@ public class PermitTypeCertification : Entity
 }
 
 /// <summary>Why the work is happening — Maintenance, Inspection, Construction, Cleaning.</summary>
-public class TaskGroup : Entity
+public class Category : Entity
 {
-    private TaskGroup() { }
+    private Category() { }
 
-    public TaskGroup(string code, string name)
+    public Category(string code, string name)
     {
-        Code = Guard.Required(code, "Task group code", 20).ToUpperInvariant();
-        Name = Guard.Required(name, "Task group name", 100);
+        Code = Guard.Required(code, "Category code", 20).ToUpperInvariant();
+        Name = Guard.Required(name, "Category name", 100);
     }
 
     public string Code { get; private set; } = null!;

@@ -82,7 +82,7 @@ internal sealed class PermitRepository(
         {
             var pattern = $"%{term}%";
             query = query.Where(p => EF.Functions.Like(p.WorkDescription, pattern)
-                                     || EF.Functions.Like(p.WorkPackage!, pattern));
+                                     || EF.Functions.Like(p.Project!, pattern));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -101,7 +101,7 @@ internal sealed class PermitRepository(
         var items = await (
                 from p in page
                 join type in context.PermitTypes on p.PermitTypeId equals type.Id
-                join group_ in context.TaskGroups on p.TaskGroupId equals group_.Id
+                join category in context.Categories on p.CategoryId equals category.Id
                 join facility in context.Facilities on p.FacilityId equals facility.Id
                 join location in context.Locations on p.LocationId equals location.Id
                 select new PermitSummaryDto(
@@ -109,8 +109,8 @@ internal sealed class PermitRepository(
                     p.Number.Value,
                     type.Name,
                     type.Code,
-                    group_.Name,
-                    p.WorkPackage,
+                    category.Name,
+                    p.Project,
                     p.WorkDescription,
                     facility.Name,
                     location.Name,
@@ -193,8 +193,8 @@ internal sealed class PermitRepository(
                 select type.Name)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var taskGroupName = await context.TaskGroups
-            .Where(g => g.Id == permit.TaskGroupId)
+        var categoryName = await context.Categories
+            .Where(g => g.Id == permit.CategoryId)
             .Select(g => g.Name)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -211,9 +211,9 @@ internal sealed class PermitRepository(
             permit.Number.Value,
             permit.PermitTypeId,
             lookups ?? "—",
-            permit.TaskGroupId,
-            taskGroupName ?? "—",
-            permit.WorkPackage,
+            permit.CategoryId,
+            categoryName ?? "—",
+            permit.Project,
             permit.WorkDescription,
             permit.Notes,
             permit.FacilityId,
@@ -312,8 +312,8 @@ internal sealed class PermitRepository(
                  select type.Name).ToList()))
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<LookupDto>> GetTaskGroupsAsync(CancellationToken cancellationToken = default) =>
-        await context.TaskGroups
+    public async Task<IReadOnlyList<LookupDto>> GetCategoriesAsync(CancellationToken cancellationToken = default) =>
+        await context.Categories
             .AsNoTracking()
             .Where(g => g.IsActive)
             .OrderBy(g => g.Name)

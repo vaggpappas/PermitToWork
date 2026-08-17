@@ -73,7 +73,7 @@ public class PermitLifecycleTests
         var permit = Submitted();
 
         var edit = () => permit.UpdateContent(
-            Creator, Given.MaintenanceTaskGroupId, "Something else entirely",
+            Creator, Given.MaintenanceCategoryId, "Something else entirely",
             Given.FacilityId, Given.LocationId, Given.TheWorkWindow, Receiver, null, null);
 
         // What was approved must be what is performed.

@@ -53,11 +53,11 @@ public sealed class PermitsController(IPermitService permits) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<PermitTypeDto>>> PermitTypes(CancellationToken cancellationToken) =>
         Ok(await permits.GetPermitTypesAsync(cancellationToken));
 
-    /// <summary>Task groups — why the work is being done.</summary>
-    [HttpGet("/api/task-groups")]
+    /// <summary>Categories — what kind of work this is.</summary>
+    [HttpGet("/api/categories")]
     [ProducesResponseType<IReadOnlyList<LookupDto>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<LookupDto>>> TaskGroups(CancellationToken cancellationToken) =>
-        Ok(await permits.GetTaskGroupsAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<LookupDto>>> Categories(CancellationToken cancellationToken) =>
+        Ok(await permits.GetCategoriesAsync(cancellationToken));
 
     #endregion
 

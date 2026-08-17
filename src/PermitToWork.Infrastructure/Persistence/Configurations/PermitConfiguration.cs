@@ -52,11 +52,11 @@ internal sealed class PermitTypeCertificationConfiguration : IEntityTypeConfigur
     }
 }
 
-internal sealed class TaskGroupConfiguration : IEntityTypeConfiguration<TaskGroup>
+internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
-    public void Configure(EntityTypeBuilder<TaskGroup> builder)
+    public void Configure(EntityTypeBuilder<Category> builder)
     {
-        builder.ToTable("TaskGroups", "ptw");
+        builder.ToTable("Categories", "ptw");
         builder.HasKey(g => g.Id);
         builder.Property(g => g.Id).ValueGeneratedNever();
 
@@ -117,7 +117,7 @@ internal sealed class PermitConfiguration : IEntityTypeConfiguration<Permit>
         builder.Navigation(p => p.Validity).IsRequired();
 
         builder.Property(p => p.WorkDescription).HasMaxLength(2000).IsRequired();
-        builder.Property(p => p.WorkPackage).HasMaxLength(150);
+        builder.Property(p => p.Project).HasMaxLength(150);
         builder.Property(p => p.Notes).HasMaxLength(2000);
         builder.Property(p => p.StatusReason).HasMaxLength(500);
         builder.Property(p => p.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
@@ -132,7 +132,7 @@ internal sealed class PermitConfiguration : IEntityTypeConfiguration<Permit>
         builder.Ignore(p => p.IsLive);
 
         builder.HasOne<PermitType>().WithMany().HasForeignKey(p => p.PermitTypeId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<TaskGroup>().WithMany().HasForeignKey(p => p.TaskGroupId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Category>().WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Facility>().WithMany().HasForeignKey(p => p.FacilityId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Location>().WithMany().HasForeignKey(p => p.LocationId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Employee>().WithMany().HasForeignKey(p => p.CreatedById).OnDelete(DeleteBehavior.Restrict);

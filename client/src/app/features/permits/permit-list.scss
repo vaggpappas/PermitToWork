@@ -1,0 +1,78 @@
+.primary-link {
+  display: inline-block;
+  padding: 0.52rem 0.95rem;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.primary-link:hover {
+  background: var(--accent-strong);
+  text-decoration: none;
+  color: #fff;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tabs button:hover:not(.selected) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.tabs button.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-nav);
+}
+
+.number {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge.type {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+  margin-right: 0.3rem;
+}
+
+/* Two lines per cell: the fact, then its context in smaller muted type. Keeps the table
+   readable without a horizontal scrollbar. */
+td small {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+td.work {
+  max-width: 320px;
+}
+
+.alert.warn {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+tr.overdue td {
+  background: var(--warning-soft);
+}
+
+.overdue-flag {
+  color: var(--warning);
+  font-weight: 600;
+}

@@ -1,0 +1,167 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Permits to work</h1>
+      <p class="subtitle">
+        @if (auth.seesAllCompanies()) {
+          Every permit on site.
+        } @else {
+          Permits your company is involved in.
+        }
+      </p>
+    </div>
+
+    @if (canCreate) {
+      <a routerLink="/permits/new" class="primary-link">Raise a permit</a>
+    }
+  </div>
+
+  <div class="tabs">
+    <button type="button" [class.selected]="scope() === 'all'" (click)="showScope('all')">
+      All permits
+    </button>
+    <button type="button" [class.selected]="scope() === 'awaiting'" (click)="showScope('awaiting')">
+      Waiting for my signature
+    </button>
+    <button type="button" [class.selected]="scope() === 'mine'" (click)="showScope('mine')">
+      Raised by me
+    </button>
+  </div>
+
+  <form class="card" [formGroup]="filters" (ngSubmit)="applyFilters()">
+    <div class="row">
+      <div style="flex: 2; min-width: 220px">
+        <label for="search">Search</label>
+        <input id="search" formControlName="search" placeholder="Work description or package" />
+      </div>
+      <div style="flex: 1; min-width: 160px">
+        <label for="status">Status</label>
+        <select id="status" formControlName="status">
+          <option value="">Any</option>
+          <option value="Draft">Draft</option>
+          <option value="Pending">Pending</option>
+          <option value="Active">Active</option>
+          <option value="Suspended">Suspended</option>
+          <option value="Closed">Closed</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Expired">Expired</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 160px">
+        <label for="permitTypeId">Type</label>
+        <select id="permitTypeId" formControlName="permitTypeId">
+          <option value="">Any</option>
+          @for (type of permitTypes(); track type.id) {
+            <option [value]="type.id">{{ type.name }}</option>
+          }
+        </select>
+      </div>
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  }
+
+  @if (overdueCount() > 0) {
+    <div class="alert warn">
+      {{ overdueCount() }} permit{{ overdueCount() === 1 ? '' : 's' }} on this page passed its
+      end date without being closed.
+    </div>
+  }
+
+  <div class="card">
+    @if (loading()) {
+      <p class="empty">Loading…</p>
+    } @else if (result(); as page) {
+      @if (page.items.length === 0) {
+        <p class="empty">
+          @if (scope() === 'awaiting') {
+            Nothing is waiting for your signature.
+          } @else if (scope() === 'mine') {
+            You have not raised any permits yet.
+          } @else {
+            No permits match those filters.
+          }
+        </p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Number</th>
+              <th>Type</th>
+              <th>Work</th>
+              <th>Where</th>
+              <th>Valid</th>
+              <th>Crew</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (permit of page.items; track permit.id) {
+              <tr [class.overdue]="permit.isOverdue">
+                <td>
+                  <a [routerLink]="['/permits', permit.id]" class="number">{{ permit.permitNumber }}</a>
+                </td>
+                <td>
+                  <span class="badge type">{{ permit.permitTypeCode }}</span>
+                  {{ permit.permitTypeName }}
+                </td>
+                <td class="work">
+                  {{ permit.workDescription }}
+                  @if (permit.project) {
+                    <small class="muted">{{ permit.project }}</small>
+                  }
+                </td>
+                <td>
+                  {{ permit.locationName }}
+                  <small class="muted">{{ permit.facilityName }}</small>
+                </td>
+                <td>
+                  {{ permit.validFrom | date: settings.dateFormat() }}
+                  <small class="muted">to {{ permit.validTo | date: settings.dateFormat() }}</small>
+                </td>
+                <td>{{ permit.workerCount }}</td>
+                <td>
+                  <span class="badge {{ permit.status.toLowerCase() }}">{{ permit.status }}</span>
+                  @if (permit.status === 'Pending' && permit.outstandingApprovals > 0) {
+                    <small class="muted">{{ permit.outstandingApprovals }} to sign</small>
+                  }
+                  @if (permit.isOverdue) {
+                    <small class="overdue-flag">past its end date</small>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="row" style="margin-top: 1rem; align-items: center">
+          <span class="muted">
+            {{ page.totalCount }} permit{{ page.totalCount === 1 ? '' : 's' }} · page
+            {{ page.page }} of {{ page.totalPages }}
+          </span>
+          <span class="spacer"></span>
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!page.hasPreviousPage"
+            (click)="goToPage(page.page - 1)"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            class="secondary small"
+            [disabled]="!page.hasNextPage"
+            (click)="goToPage(page.page + 1)"
+          >
+            Next
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -83,4 +83,12 @@ export class LookupsApi {
   facilities(): Observable<Lookup[]> {
     return this.http.get<Lookup[]>('/api/lookups/facilities');
   }
+
+  buildings(facilityId: string): Observable<Lookup[]> {
+    return this.http.get<Lookup[]>(`/api/lookups/facilities/${facilityId}/buildings`);
+  }
+
+  locations(buildingId: string): Observable<Lookup[]> {
+    return this.http.get<Lookup[]>(`/api/lookups/buildings/${buildingId}/locations`);
+  }
 }

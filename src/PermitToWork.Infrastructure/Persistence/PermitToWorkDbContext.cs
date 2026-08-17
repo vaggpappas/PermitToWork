@@ -48,7 +48,7 @@ public class PermitToWorkDbContext : IdentityUserContext<ApplicationUser, Guid>
     public DbSet<FacilityApprover> FacilityApprovers => Set<FacilityApprover>();
 
     public DbSet<PermitType> PermitTypes => Set<PermitType>();
-    public DbSet<TaskGroup> TaskGroups => Set<TaskGroup>();
+    public DbSet<Category> Categories => Set<Category>();
     public DbSet<Permit> Permits => Set<Permit>();
 
     protected override void OnModelCreating(ModelBuilder builder)

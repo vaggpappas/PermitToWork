@@ -34,6 +34,37 @@ export const routes: Routes = [
     loadComponent: () => import('./features/teams/team-detail').then((m) => m.TeamDetail),
   },
   {
+    path: 'permits',
+    title: 'Permits — Permit To Work',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/permits/permit-list').then((m) => m.PermitList),
+  },
+  {
+    // Before 'permits/:id', or "new" is read as an id and the detail page 404s.
+    path: 'permits/new',
+    title: 'Raise a permit — Permit To Work',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/permits/permit-form').then((m) => m.PermitForm),
+  },
+  {
+    path: 'permits/:id/edit',
+    title: 'Edit permit — Permit To Work',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/permits/permit-form').then((m) => m.PermitForm),
+  },
+  {
+    path: 'permits/:id',
+    title: 'Permit — Permit To Work',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/permits/permit-detail').then((m) => m.PermitDetail),
+  },
+  {
+    path: 'approval-panels',
+    title: 'Approval panels — Permit To Work',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/approvals/approval-panels').then((m) => m.ApprovalPanels),
+  },
+  {
     path: 'settings',
     title: 'Settings — Permit To Work',
     canActivate: [authGuard],

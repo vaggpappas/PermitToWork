@@ -11,8 +11,8 @@ public sealed record PermitSummaryDto(
     string PermitNumber,
     string PermitTypeName,
     string PermitTypeCode,
-    string TaskGroupName,
-    string? WorkPackage,
+    string CategoryName,
+    string? Project,
     string WorkDescription,
     string FacilityName,
     string LocationName,
@@ -70,9 +70,9 @@ public sealed record PermitDetailDto(
     string PermitNumber,
     Guid PermitTypeId,
     string PermitTypeName,
-    Guid TaskGroupId,
-    string TaskGroupName,
-    string? WorkPackage,
+    Guid CategoryId,
+    string CategoryName,
+    string? Project,
     string WorkDescription,
     string? Notes,
     Guid FacilityId,
@@ -157,7 +157,7 @@ public sealed record CreatePermitRequest
     public Guid PermitTypeId { get; init; }
 
     [Required]
-    public Guid TaskGroupId { get; init; }
+    public Guid CategoryId { get; init; }
 
     [Required, StringLength(2000, MinimumLength = 10)]
     public string WorkDescription { get; init; } = string.Empty;
@@ -176,7 +176,7 @@ public sealed record CreatePermitRequest
     public Guid ReceiverId { get; init; }
 
     [StringLength(150)]
-    public string? WorkPackage { get; init; }
+    public string? Project { get; init; }
 
     [StringLength(2000)]
     public string? Notes { get; init; }
@@ -185,7 +185,7 @@ public sealed record CreatePermitRequest
 public sealed record UpdatePermitRequest
 {
     [Required]
-    public Guid TaskGroupId { get; init; }
+    public Guid CategoryId { get; init; }
 
     [Required, StringLength(2000, MinimumLength = 10)]
     public string WorkDescription { get; init; } = string.Empty;
@@ -203,7 +203,7 @@ public sealed record UpdatePermitRequest
     public Guid ReceiverId { get; init; }
 
     [StringLength(150)]
-    public string? WorkPackage { get; init; }
+    public string? Project { get; init; }
 
     [StringLength(2000)]
     public string? Notes { get; init; }

@@ -84,8 +84,8 @@ case a single-date check misses.
 ```
 Permit (aggregate root)
 ├─ PermitNumber          value object, HW-2026-0001
-├─ PermitTypeId, TaskGroupId
-├─ WorkPackage?          "Unit 3 Turnaround"
+├─ PermitTypeId, CategoryId
+├─ Project?              "Unit 3 Turnaround"
 ├─ WorkDescription
 ├─ LocationId            → Building → Facility, transitively
 ├─ Notes?
@@ -109,7 +109,7 @@ reason.
 |---|---|
 | `PermitType` | HW Hot Work, CS Confined Space, WH Working at Height, EL Electrical, CW Cold Work |
 | `PermitTypeCertification` | which certifications each type requires |
-| `TaskGroup` | Maintenance, Inspection, Construction, Cleaning |
+| `Category` | Maintenance, Inspection, Construction, Cleaning |
 
 ---
 

@@ -121,6 +121,147 @@ export interface TeamMember {
   isCurrent: boolean;
 }
 
+/* ---------------------------------------------------------------- permits */
+
+export type PermitStatus =
+  | 'Draft'
+  | 'Pending'
+  | 'Active'
+  | 'Closed'
+  | 'Rejected'
+  | 'Suspended'
+  | 'Cancelled'
+  | 'Expired';
+
+export type ApprovalDecision = 'Pending' | 'Approved' | 'Rejected';
+
+export interface PermitSummary {
+  id: string;
+  permitNumber: string;
+  permitTypeName: string;
+  permitTypeCode: string;
+  categoryName: string;
+  project: string | null;
+  workDescription: string;
+  facilityName: string;
+  locationName: string;
+  validFrom: string;
+  validTo: string;
+  status: PermitStatus;
+  createdByName: string;
+  receiverName: string;
+  workerCount: number;
+  outstandingApprovals: number;
+  isOverdue: boolean;
+}
+
+export interface PermitApproval {
+  id: string;
+  approverEmployeeId: string;
+  approverName: string;
+  isDecisive: boolean;
+  decision: ApprovalDecision;
+  decidedOn: string | null;
+  comment: string | null;
+}
+
+export interface PermitWorker {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  fullName: string;
+  tradeName: string;
+  companyName: string;
+  note: string | null;
+}
+
+export interface PermitEquipment {
+  id: string;
+  description: string;
+  identifier: string | null;
+  quantity: number;
+}
+
+export interface PermitDocument {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeInBytes: number;
+  uploadedByName: string;
+  uploadedOn: string;
+}
+
+export interface PermitEvent {
+  id: string;
+  kind: string;
+  actorName: string | null;
+  detail: string | null;
+  occurredOn: string;
+}
+
+export interface PermitDetail {
+  id: string;
+  permitNumber: string;
+  permitTypeId: string;
+  permitTypeName: string;
+  categoryId: string;
+  categoryName: string;
+  project: string | null;
+  workDescription: string;
+  notes: string | null;
+  facilityId: string;
+  facilityName: string;
+  locationId: string;
+  locationName: string;
+  buildingName: string;
+  validFrom: string;
+  validTo: string;
+  status: PermitStatus;
+  statusReason: string | null;
+  createdById: string;
+  createdByName: string;
+  receiverId: string;
+  receiverName: string;
+  issuedById: string | null;
+  issuedByName: string | null;
+  requiredCertifications: string[];
+  approvals: PermitApproval[];
+  workers: PermitWorker[];
+  equipment: PermitEquipment[];
+  documents: PermitDocument[];
+  history: PermitEvent[];
+  outstandingApprovals: number;
+
+  // Computed server-side. The buttons on screen and the rules in the aggregate come from
+  // the same place, so they cannot drift — and the server still refuses anything illegal.
+  canEdit: boolean;
+  canSubmit: boolean;
+  canChangeResources: boolean;
+  canClose: boolean;
+  canSuspend: boolean;
+  canResume: boolean;
+  canCancel: boolean;
+}
+
+export interface PermitType {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  requiredCertifications: string[];
+}
+
+export interface FacilityApprover {
+  id: string;
+  facilityId: string;
+  employeeId: string;
+  employeeName: string;
+  employeeNumber: string;
+  jobTitle: string;
+  isDecisive: boolean;
+  isActive: boolean;
+}
+
 export interface TeamDetail {
   id: string;
   code: string;

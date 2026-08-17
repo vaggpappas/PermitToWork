@@ -1,0 +1,81 @@
+.facility-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+  flex-wrap: wrap;
+}
+
+.facility-tabs button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  text-align: left;
+  font-weight: 500;
+}
+
+.facility-tabs button:hover:not(.selected) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.facility-tabs button.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-nav);
+}
+
+.facility-tabs small {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+}
+
+.alert.warn {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+/* ---------- the decisive switch ---------- */
+
+label.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--text);
+  cursor: pointer;
+  padding-bottom: 0.35rem;
+  max-width: 260px;
+}
+
+label.checkbox input {
+  width: auto;
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+label.checkbox small {
+  display: block;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+label.switch {
+  margin: 0;
+}
+
+label.switch input {
+  width: auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

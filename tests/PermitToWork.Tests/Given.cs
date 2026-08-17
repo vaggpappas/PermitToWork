@@ -46,7 +46,7 @@ internal static class Given
     #region Permits
 
     public static readonly Guid HotWorkPermitTypeId = Guid.Parse("77777777-7777-7777-7777-777777777777");
-    public static readonly Guid MaintenanceTaskGroupId = Guid.Parse("88888888-8888-8888-8888-888888888888");
+    public static readonly Guid MaintenanceCategoryId = Guid.Parse("88888888-8888-8888-8888-888888888888");
     public static readonly Guid LocationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
 
     /// <summary>A three-day job, first week of September. Fixed, so nothing here drifts with the clock.</summary>
@@ -67,7 +67,7 @@ internal static class Given
         new(
             PermitNumber.Create("HW-2026-0001"),
             HotWorkPermitTypeId,
-            MaintenanceTaskGroupId,
+            MaintenanceCategoryId,
             "Replace the flange on the north header.",
             FacilityId,
             LocationId,
@@ -75,7 +75,7 @@ internal static class Given
             createdBy,
             receiver,
             requires ?? [],
-            workPackage: "Unit 3 Turnaround");
+            project: "Unit 3 Turnaround");
 
     /// <summary>A permit that demands a Hot Work certificate of everyone on it.</summary>
     public static Permit AHotWorkPermit(Guid createdBy, Guid receiver, DateTimeRange? validity = null) =>

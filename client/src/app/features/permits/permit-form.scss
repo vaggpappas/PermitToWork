@@ -1,0 +1,133 @@
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.card-head h2 {
+  margin: 0;
+}
+
+.card-head .legend {
+  margin: 0;
+}
+
+/* Fixed column counts rather than auto-fit. A form is read top to bottom in a known order,
+   and letting fields reflow by available width puts "Category" under "Facility" at some
+   window sizes, which reads as a mistake. */
+.field-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.field-full {
+  margin-top: 1rem;
+}
+
+.requirement {
+  margin: 1rem 0 0;
+}
+
+/* ---------- the validity period ---------- */
+
+fieldset.period {
+  margin: 1.25rem 0 0;
+  padding: 0.9rem 1rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+fieldset.period legend {
+  padding: 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.period-fields {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 0.75rem;
+  max-width: 620px;
+}
+
+.period-arrow {
+  color: var(--text-faint);
+  padding-bottom: 0.55rem;
+  font-size: 1rem;
+}
+
+.period-note {
+  margin: 0.7rem 0 0;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin: 0.35rem 0 0;
+  line-height: 1.4;
+}
+
+.hint.boxed {
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.form-actions {
+  margin-bottom: 2rem;
+}
+
+.next-step {
+  border-style: dashed;
+  background: transparent;
+}
+
+.next-step h2 {
+  margin-bottom: 0.4rem;
+}
+
+.steps {
+  margin: 0.9rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.steps li {
+  margin-bottom: 0.35rem;
+}
+
+.steps strong {
+  color: var(--text);
+}
+
+@media (max-width: 780px) {
+  .field-grid.two,
+  .field-grid.three {
+    grid-template-columns: 1fr;
+  }
+
+  .period-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .period-arrow {
+    display: none;
+  }
+}

@@ -49,13 +49,13 @@ public static class DatabaseSeeder
         PermitToWorkDbContext context,
         CancellationToken cancellationToken)
     {
-        if (!await context.TaskGroups.AnyAsync(cancellationToken))
+        if (!await context.Categories.AnyAsync(cancellationToken))
         {
-            context.TaskGroups.AddRange(
-                new TaskGroup("MAINT", "Maintenance"),
-                new TaskGroup("INSP", "Inspection"),
-                new TaskGroup("CONST", "Construction"),
-                new TaskGroup("CLEAN", "Cleaning"));
+            context.Categories.AddRange(
+                new Category("MAINT", "Maintenance"),
+                new Category("INSP", "Inspection"),
+                new Category("CONST", "Construction"),
+                new Category("CLEAN", "Cleaning"));
         }
 
         if (await context.PermitTypes.AnyAsync(cancellationToken))

@@ -1,0 +1,142 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Approval panels</h1>
+      <p class="subtitle">
+        Who signs permits at each facility. A permit is sent to this list when it is
+        submitted, and the list is copied onto the permit at that moment.
+      </p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert error">{{ error() }}</div>
+  }
+
+  <div class="facility-tabs">
+    @for (facility of facilities(); track facility.id) {
+      <button
+        type="button"
+        [class.selected]="selectedFacilityId() === facility.id"
+        (click)="select(facility.id)"
+      >
+        {{ facility.name }}
+        <small>{{ facility.code }}</small>
+      </button>
+    }
+  </div>
+
+  @if (selectedFacility(); as facility) {
+    @if (hasNoApprovers()) {
+      <div class="alert warn">
+        <strong>{{ facility.name }} has nobody on its panel.</strong>
+        Permits at this facility cannot be submitted until somebody is seated here — there
+        would be nobody to approve them.
+      </div>
+    }
+
+    @if (canManage) {
+      <form class="card" [formGroup]="form" (ngSubmit)="add()">
+        <h2>Seat an approver</h2>
+
+        <div class="row">
+          <div style="flex: 2; min-width: 260px">
+            <label for="employeeId" class="required">Employee</label>
+            <select id="employeeId" formControlName="employeeId">
+              <option value="">Choose…</option>
+              @for (person of addableEmployees(); track person.id) {
+                <option [value]="person.id">
+                  {{ person.fullName }} — {{ person.jobTitle }} ({{ person.companyName }})
+                </option>
+              }
+            </select>
+          </div>
+
+          <label class="checkbox">
+            <input type="checkbox" formControlName="isDecisive" />
+            <span>
+              Can sign alone
+              <small>Their approval activates a permit without waiting for the rest</small>
+            </span>
+          </label>
+
+          <button type="submit" [disabled]="busy()">Add to panel</button>
+        </div>
+      </form>
+    }
+
+    <div class="card">
+      <h2>{{ facility.name }} — {{ panel().length }} approver{{ panel().length === 1 ? '' : 's' }}</h2>
+
+      @if (loading()) {
+        <p class="empty">Loading…</p>
+      } @else if (panel().length === 0) {
+        <p class="empty">Nobody is seated on this panel yet.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Badge</th>
+              <th>Name</th>
+              <th>Job title</th>
+              <th>Can sign alone</th>
+              @if (canManage) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (approver of panel(); track approver.id) {
+              <tr>
+                <td>{{ approver.employeeNumber }}</td>
+                <td>
+                  {{ approver.employeeName }}
+                  @if (approver.isDecisive) {
+                    <span class="badge leader">decisive</span>
+                  }
+                </td>
+                <td class="muted">{{ approver.jobTitle }}</td>
+                <td>
+                  @if (canManage) {
+                    <label class="switch">
+                      <input
+                        type="checkbox"
+                        [checked]="approver.isDecisive"
+                        [disabled]="busy()"
+                        (change)="setDecisive(approver.id, $any($event.target).checked)"
+                      />
+                    </label>
+                  } @else {
+                    {{ approver.isDecisive ? 'Yes' : 'No' }}
+                  }
+                </td>
+                @if (canManage) {
+                  <td>
+                    <button
+                      type="button"
+                      class="link small"
+                      [disabled]="busy()"
+                      (click)="remove(approver)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <p class="muted" style="margin-bottom: 0">
+          A permit activates when every approver here has signed — or immediately when one
+          marked <em>decisive</em> signs. If the person raising a permit is on this panel and
+          there is somebody else on it, their own seat is skipped for their own permits.
+        </p>
+      }
+    </div>
+  } @else if (facilities().length === 0) {
+    <div class="card">
+      <p class="empty">No facilities yet.</p>
+    </div>
+  }
+</div>

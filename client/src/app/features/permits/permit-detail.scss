@@ -1,0 +1,94 @@
+.actions {
+  align-items: center;
+}
+
+.button-link {
+  display: inline-block;
+  padding: 0.52rem 0.95rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.button-link:hover {
+  background: var(--surface-hover);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.description {
+  margin: 0 0 1.25rem;
+  font-size: 1rem;
+  white-space: pre-wrap;
+}
+
+dl.facts dd small {
+  display: block;
+  font-size: 0.72rem;
+}
+
+.alert.warn {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+.badge.approved {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.badge.rejected {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+/* ---------- history ---------- */
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--border-strong);
+}
+
+.history li {
+  position: relative;
+  padding: 0.5rem 0 0.5rem 1.1rem;
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(140px, auto) 1fr;
+  gap: 0.2rem 0.8rem;
+  align-items: baseline;
+}
+
+.history li::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 0.95rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.history .kind {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.history .when,
+.history .who {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.history .detail {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

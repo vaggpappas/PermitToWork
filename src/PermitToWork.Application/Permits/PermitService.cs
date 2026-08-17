@@ -15,7 +15,7 @@ public interface IPermitService
 
     Task<IReadOnlyList<PermitTypeDto>> GetPermitTypesAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<LookupDto>> GetTaskGroupsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<LookupDto>> GetCategoriesAsync(CancellationToken cancellationToken = default);
 
     Task<Guid> CreateAsync(CreatePermitRequest request, CancellationToken cancellationToken = default);
 
@@ -71,8 +71,8 @@ public sealed class PermitService(
     public Task<IReadOnlyList<PermitTypeDto>> GetPermitTypesAsync(CancellationToken cancellationToken = default) =>
         permits.GetPermitTypesAsync(cancellationToken);
 
-    public Task<IReadOnlyList<LookupDto>> GetTaskGroupsAsync(CancellationToken cancellationToken = default) =>
-        permits.GetTaskGroupsAsync(cancellationToken);
+    public Task<IReadOnlyList<LookupDto>> GetCategoriesAsync(CancellationToken cancellationToken = default) =>
+        permits.GetCategoriesAsync(cancellationToken);
 
     public async Task<Guid> CreateAsync(CreatePermitRequest request, CancellationToken cancellationToken = default)
     {
@@ -99,7 +99,7 @@ public sealed class PermitService(
         var permit = new Permit(
             PermitNumber.Create(number),
             request.PermitTypeId,
-            request.TaskGroupId,
+            request.CategoryId,
             request.WorkDescription,
             facilityId,
             request.LocationId,
@@ -107,7 +107,7 @@ public sealed class PermitService(
             author,
             request.ReceiverId,
             requirements,
-            request.WorkPackage,
+            request.Project,
             request.Notes);
 
         permits.Add(permit);
@@ -126,13 +126,13 @@ public sealed class PermitService(
 
         permit.UpdateContent(
             actor,
-            request.TaskGroupId,
+            request.CategoryId,
             request.WorkDescription,
             facilityId,
             request.LocationId,
             DateTimeRange.Create(request.ValidFrom, request.ValidTo),
             request.ReceiverId,
-            request.WorkPackage,
+            request.Project,
             request.Notes);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
