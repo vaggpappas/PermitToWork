@@ -446,8 +446,6 @@ Stated plainly, because a project that claims to do everything is the less hones
 
 **Known gaps**
 
-- A plain Employee has no "my permits" self-view — they see the same list as everyone else in
-  their company.
 - The Angular tests cover the core (auth, guards, the interceptor, error mapping) and one
   screen. The remaining components are exercised by hand rather than by a test.
 
