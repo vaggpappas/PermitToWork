@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PermitToWork.Domain.Organization;
+using PermitToWork.Domain.Permits;
 using PermitToWork.Domain.ValueObjects;
 using PermitToWork.Infrastructure.Identity;
 
@@ -33,7 +34,80 @@ public static class DatabaseSeeder
 
         // No roles to seed: they are a value on the employee record, not rows in a table.
         var (company, facility, trade) = await SeedReferenceDataAsync(context, cancellationToken);
-        await SeedAdministratorAsync(context, userManager, configuration, company, trade, logger, cancellationToken);
+        await SeedPermitReferenceDataAsync(context, cancellationToken);
+        var administrator = await SeedAdministratorAsync(
+            context, userManager, configuration, company, trade, logger, cancellationToken);
+
+        await SeedApprovalPanelAsync(context, facility, administrator, cancellationToken);
+    }
+
+    /// <summary>
+    /// Permit types with the certifications they demand, and the task groups work is
+    /// classified under. The certification links are what make the hard block real.
+    /// </summary>
+    private static async Task SeedPermitReferenceDataAsync(
+        PermitToWorkDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!await context.TaskGroups.AnyAsync(cancellationToken))
+        {
+            context.TaskGroups.AddRange(
+                new TaskGroup("MAINT", "Maintenance"),
+                new TaskGroup("INSP", "Inspection"),
+                new TaskGroup("CONST", "Construction"),
+                new TaskGroup("CLEAN", "Cleaning"));
+        }
+
+        if (await context.PermitTypes.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var certifications = await context.CertificationTypes
+            .ToDictionaryAsync(t => t.Code, t => t.Id, cancellationToken);
+
+        var hotWork = new PermitType("HW", "Hot Work", "Welding, cutting, grinding — anything producing a spark.");
+        var confinedSpace = new PermitType("CS", "Confined Space Entry", "Vessels, tanks, pits and trenches.");
+        var height = new PermitType("WH", "Working at Height", "Anywhere a fall is possible.");
+        var electrical = new PermitType("EL", "Electrical", "Work on or near live equipment.");
+        var coldWork = new PermitType("CW", "Cold Work", "General mechanical work with no special hazard.");
+
+        Require(hotWork, "HOTWORK");
+        Require(confinedSpace, "CONFINED");
+        Require(height, "HEIGHT");
+        Require(electrical, "LOTO");
+        // Cold work requires nothing — deliberately, so there is a type that demonstrates
+        // the rule not firing as well as types that demonstrate it firing.
+
+        context.PermitTypes.AddRange(hotWork, confinedSpace, height, electrical, coldWork);
+        await context.SaveChangesAsync(cancellationToken);
+
+        void Require(PermitType type, string certificationCode)
+        {
+            if (certifications.TryGetValue(certificationCode, out var certificationTypeId))
+            {
+                type.RequireCertification(certificationTypeId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gives the seeded facility an approval panel with the administrator on it, marked
+    /// decisive — otherwise a fresh installation can raise permits but never approve one.
+    /// </summary>
+    private static async Task SeedApprovalPanelAsync(
+        PermitToWorkDbContext context,
+        Facility facility,
+        Employee? administrator,
+        CancellationToken cancellationToken)
+    {
+        if (administrator is null || await context.FacilityApprovers.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        context.FacilityApprovers.Add(new FacilityApprover(facility.Id, administrator.Id, isDecisive: true));
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task<(Company Company, Facility Facility, Trade Trade)> SeedReferenceDataAsync(
@@ -85,7 +159,8 @@ public static class DatabaseSeeder
         return (company, facility, trade);
     }
 
-    private static async Task SeedAdministratorAsync(
+    /// <summary>Returns the administrator's employee record, so the caller can seat them on the panel.</summary>
+    private static async Task<Employee?> SeedAdministratorAsync(
         PermitToWorkDbContext context,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
@@ -99,7 +174,9 @@ public static class DatabaseSeeder
 
         if (await userManager.FindByEmailAsync(email) is not null)
         {
-            return;
+            return await context.Employees
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(e => e.Contact.Email == email, cancellationToken);
         }
 
         var user = new ApplicationUser
@@ -115,7 +192,7 @@ public static class DatabaseSeeder
         {
             logger.LogError("Could not seed the administrator account: {Errors}",
                 string.Join("; ", created.Errors.Select(e => e.Description)));
-            return;
+            return null;
         }
 
         // Through the same counter the API uses, so the first employee created afterwards
@@ -140,5 +217,7 @@ public static class DatabaseSeeder
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogWarning("Seeded administrator {Email}. Change this password before deploying anywhere real.", email);
+
+        return employee;
     }
 }

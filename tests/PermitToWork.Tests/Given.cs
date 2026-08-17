@@ -1,4 +1,5 @@
 using PermitToWork.Domain.Organization;
+using PermitToWork.Domain.Permits;
 using PermitToWork.Domain.ValueObjects;
 
 namespace PermitToWork.Tests;
@@ -41,4 +42,68 @@ internal static class Given
 
     public static Team ATeam(string code = "MECH-A") =>
         new(code, "Mechanical Crew A", FacilityId, "Unit 3 mechanical maintenance");
+
+    #region Permits
+
+    public static readonly Guid HotWorkPermitTypeId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+    public static readonly Guid MaintenanceTaskGroupId = Guid.Parse("88888888-8888-8888-8888-888888888888");
+    public static readonly Guid LocationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+
+    /// <summary>A three-day job, first week of September. Fixed, so nothing here drifts with the clock.</summary>
+    public static readonly DateTimeOffset WorkStart = new(2026, 9, 1, 8, 0, 0, TimeSpan.Zero);
+
+    public static readonly DateTimeOffset WorkEnd = new(2026, 9, 3, 17, 0, 0, TimeSpan.Zero);
+
+    public static DateTimeRange TheWorkWindow => DateTimeRange.Create(WorkStart, WorkEnd);
+
+    public static readonly CertificationRequirement HotWorkRequired =
+        new(HotWorkCertificationTypeId, "Hot Work");
+
+    public static Permit APermit(
+        Guid createdBy,
+        Guid receiver,
+        IEnumerable<CertificationRequirement>? requires = null,
+        DateTimeRange? validity = null) =>
+        new(
+            PermitNumber.Create("HW-2026-0001"),
+            HotWorkPermitTypeId,
+            MaintenanceTaskGroupId,
+            "Replace the flange on the north header.",
+            FacilityId,
+            LocationId,
+            validity ?? TheWorkWindow,
+            createdBy,
+            receiver,
+            requires ?? [],
+            workPackage: "Unit 3 Turnaround");
+
+    /// <summary>A permit that demands a Hot Work certificate of everyone on it.</summary>
+    public static Permit AHotWorkPermit(Guid createdBy, Guid receiver, DateTimeRange? validity = null) =>
+        APermit(createdBy, receiver, [HotWorkRequired], validity);
+
+    /// <summary>
+    /// A welder holding a Hot Work certificate. Pass an earlier expiry to build the case
+    /// that matters: somebody qualified on the first morning but not on the last.
+    /// </summary>
+    public static Employee ACertifiedWelder(DateOnly? expiresOn = null, string number = "ACME-0100")
+    {
+        var welder = AnEmployee(number, "Luis", "Ferreira");
+
+        welder.AddCertification(
+            HotWorkCertificationTypeId,
+            "Hellenic Welding Institute",
+            new DateOnly(2025, 1, 15),
+            expiresOn ?? new DateOnly(2027, 1, 15));
+
+        return welder;
+    }
+
+    public static Employee AnUncertifiedWorker(string number = "ACME-0200") =>
+        AnEmployee(number, "Marta", "Silva");
+
+    public static ApproverAssignment Approver(Guid employeeId) => new(employeeId, IsDecisive: false);
+
+    public static ApproverAssignment DecisiveApprover(Guid employeeId) => new(employeeId, IsDecisive: true);
+
+    #endregion
 }

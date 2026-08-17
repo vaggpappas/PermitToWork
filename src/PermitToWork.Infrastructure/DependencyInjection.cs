@@ -60,6 +60,8 @@ public static class DependencyInjection
         services.AddScoped<CounterStore>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<ITeamRepository, TeamRepository>();
+        services.AddScoped<IPermitRepository, PermitRepository>();
+        services.AddScoped<IFacilityApproverRepository, FacilityApproverRepository>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

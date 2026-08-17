@@ -86,7 +86,22 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
     // Idempotent: every step checks before it writes, so this is safe on every start.
-    await DatabaseSeeder.SeedAsync(app.Services);
+    //
+    // Wrapped because the overwhelmingly common failure here is "the SQL Server container
+    // is not running", and an unhandled exception answers that with two hundred lines of
+    // stack trace and a dead process. One legible line and a host that still starts is a
+    // better answer: Swagger loads, and the reason is at the top of the console.
+    try
+    {
+        await DatabaseSeeder.SeedAsync(app.Services);
+    }
+    catch (Exception failure)
+    {
+        app.Logger.LogError(
+            "Could not seed the database: {Message} " +
+            "Is SQL Server running? Try: docker compose up -d sqlserver",
+            failure.Message);
+    }
 }
 
 app.UseHttpsRedirection();

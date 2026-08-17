@@ -3,6 +3,8 @@ using PermitToWork.Domain.Common;
 using PermitToWork.Domain.ValueObjects;
 using Xunit;
 
+// ReSharper disable once CheckNamespace
+
 namespace PermitToWork.Tests.Domain;
 
 /// <summary>
@@ -129,6 +131,74 @@ public class ValueObjectTests
         // "  " is not a phone number. Collapsing it to null means no query downstream has
         // to check for both null and whitespace.
         ContactInfo.Create("nadia@acme.example", "   ").PhoneNumber.Should().BeNull();
+    }
+
+    #endregion
+
+    #region DateTimeRange
+
+    [Fact]
+    public void DateTimeRange_RejectsAnEndBeforeItsStart()
+    {
+        var backwards = () => DateTimeRange.Create(Given.WorkEnd, Given.WorkStart);
+
+        backwards.Should().Throw<DomainException>().WithMessage("*after its start*");
+    }
+
+    [Fact]
+    public void DateTimeRange_RejectsAZeroLengthPeriod()
+    {
+        var instant = () => DateTimeRange.Create(Given.WorkStart, Given.WorkStart);
+
+        instant.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void DateTimeRange_IsHalfOpen()
+    {
+        var window = Given.TheWorkWindow;
+
+        window.Contains(Given.WorkStart).Should().BeTrue();
+        window.Contains(Given.WorkEnd.AddSeconds(-1)).Should().BeTrue();
+
+        // The end instant is the first moment outside, stated once so no caller has to
+        // decide for themselves.
+        window.Contains(Given.WorkEnd).Should().BeFalse();
+        window.HasPassed(Given.WorkEnd).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region PermitNumber
+
+    [Theory]
+    [InlineData("HW-2026-0001")]
+    [InlineData("CS-2026-0042")]
+    [InlineData("LOTO-2026-0001")]
+    public void PermitNumber_AcceptsTypeYearSequence(string input)
+    {
+        PermitNumber.Create(input).Value.Should().Be(input);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("HW-2026")]
+    [InlineData("H-2026-0001")]
+    [InlineData("HW-26-0001")]
+    [InlineData("HW-2026-1")]
+    [InlineData("HOTWORK-2026-0001")]
+    public void PermitNumber_Rejects_MalformedInput(string? input)
+    {
+        var create = () => PermitNumber.Create(input);
+
+        create.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void PermitNumber_NormalisesToUpperCase()
+    {
+        PermitNumber.Create(" hw-2026-0001 ").Value.Should().Be("HW-2026-0001");
     }
 
     #endregion

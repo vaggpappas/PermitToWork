@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PermitToWork.Application.Abstractions;
 using PermitToWork.Domain.Organization;
+using PermitToWork.Domain.Permits;
 using PermitToWork.Infrastructure.Identity;
 
 namespace PermitToWork.Infrastructure.Persistence;
@@ -44,6 +45,11 @@ public class PermitToWorkDbContext : IdentityUserContext<ApplicationUser, Guid>
     public DbSet<CertificationType> CertificationTypes => Set<CertificationType>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Team> Teams => Set<Team>();
+    public DbSet<FacilityApprover> FacilityApprovers => Set<FacilityApprover>();
+
+    public DbSet<PermitType> PermitTypes => Set<PermitType>();
+    public DbSet<TaskGroup> TaskGroups => Set<TaskGroup>();
+    public DbSet<Permit> Permits => Set<Permit>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
