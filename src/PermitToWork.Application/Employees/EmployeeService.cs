@@ -16,6 +16,19 @@ public interface IEmployeeService
 
     Task UpdateAsync(Guid id, UpdateEmployeeRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>The signed-in user's own record.</summary>
+    Task<EmployeeDetailDto> GetMyProfileAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the signed-in user's own contact details.
+    /// <para>
+    /// No id parameter, by design. The record edited is the one on the caller's token, so
+    /// there is no way to aim this at somebody else — not by guessing an id, and not by a
+    /// check that a future edit might drop.
+    /// </para>
+    /// </summary>
+    Task UpdateMyContactAsync(UpdateMyContactRequest request, CancellationToken cancellationToken = default);
+
     Task AssignManagerAsync(Guid id, Guid? managerId, CancellationToken cancellationToken = default);
 
     Task ChangeStatusAsync(Guid id, EmploymentAction action, CancellationToken cancellationToken = default);
@@ -40,6 +53,7 @@ public interface IEmployeeService
 public sealed class EmployeeService(
     IEmployeeRepository employees,
     IReferenceDataRepository referenceData,
+    ICurrentUser currentUser,
     IUnitOfWork unitOfWork) : IEmployeeService
 {
     public Task<PagedResult<EmployeeSummaryDto>> SearchAsync(
@@ -130,6 +144,33 @@ public sealed class EmployeeService(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
+
+    public Task<EmployeeDetailDto> GetMyProfileAsync(CancellationToken cancellationToken = default) =>
+        GetAsync(MyEmployeeId(), cancellationToken);
+
+    public async Task UpdateMyContactAsync(
+        UpdateMyContactRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var employee = await RequireAsync(MyEmployeeId(), cancellationToken);
+
+        // No email check and no trade check, because neither can be in the request. The
+        // whole method is three lines for the same reason the request type is two fields.
+        employee.UpdateContactDetails(request.PhoneNumber, ToAddress(request.Address));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// The employee record behind the token.
+    /// <para>
+    /// A signed-in user without one is possible in principle — an Identity account whose
+    /// employee record was deleted underneath it — and it is not something a profile screen
+    /// can do anything sensible with, so it is a 404 rather than a null to thread through.
+    /// </para>
+    /// </summary>
+    private Guid MyEmployeeId() =>
+        currentUser.EmployeeId
+        ?? throw new NotFoundException(nameof(Employee), "the signed-in user has no employee record");
 
     public async Task AssignManagerAsync(Guid id, Guid? managerId, CancellationToken cancellationToken = default)
     {

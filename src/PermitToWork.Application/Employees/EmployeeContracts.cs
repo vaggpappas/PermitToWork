@@ -145,6 +145,24 @@ public sealed record CreateEmployeeRequest
     public AddressDto? Address { get; init; }
 }
 
+/// <summary>
+/// What somebody may change about their own record.
+/// <para>
+/// The whole point of this type is what it does <em>not</em> have. There is no trade here, no
+/// job title, no name, no email and no employee id — so the self-service endpoint cannot be
+/// used to widen what work you are allowed to do, or to edit anybody else. A narrower type is
+/// a stronger guarantee than a check inside the method, because a check can be removed by
+/// somebody who does not know why it was there.
+/// </para>
+/// </summary>
+public sealed record UpdateMyContactRequest
+{
+    [StringLength(30)]
+    public string? PhoneNumber { get; init; }
+
+    public AddressDto? Address { get; init; }
+}
+
 public sealed record UpdateEmployeeRequest
 {
     [Required, StringLength(80)]

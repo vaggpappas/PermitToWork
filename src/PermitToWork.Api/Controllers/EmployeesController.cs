@@ -26,6 +26,38 @@ public sealed class EmployeesController(IEmployeeService employees) : Controller
         Ok(await employees.SearchAsync(request, cancellationToken));
 
     /// <summary>One employee, with certifications and computed age.</summary>
+    /// <summary>The signed-in user's own record, with their certifications.</summary>
+    /// <remarks>
+    /// Before <c>{id:guid}</c> in this file, but that is only tidiness — "me" is not a Guid,
+    /// so the route constraint would never have matched it anyway.
+    /// </remarks>
+    [HttpGet("me")]
+    [ProducesResponseType<EmployeeDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EmployeeDetailDto>> GetMyProfile(CancellationToken cancellationToken) =>
+        Ok(await employees.GetMyProfileAsync(cancellationToken));
+
+    /// <summary>
+    /// Updates the signed-in user's own phone number and address.
+    /// </summary>
+    /// <remarks>
+    /// No role attribute and no id in the route: any signed-in person may edit their own
+    /// contact details and nobody else's. What they may change is limited by the shape of
+    /// <see cref="UpdateMyContactRequest"/> rather than by a check in here — trade, job title
+    /// and email have no field to travel in, so no amount of crafting the request body can
+    /// reach them.
+    /// </remarks>
+    [HttpPut("me/contact")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateMyContact(
+        UpdateMyContactRequest request,
+        CancellationToken cancellationToken)
+    {
+        await employees.UpdateMyContactAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType<EmployeeDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

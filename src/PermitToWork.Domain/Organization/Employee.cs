@@ -122,6 +122,24 @@ public class Employee : Entity
         Address = address;
     }
 
+    /// <summary>
+    /// Changes only what a person may change about themselves: how to reach them.
+    /// <para>
+    /// Deliberately its own method rather than an overload of <see cref="UpdateProfile"/>,
+    /// and deliberately without a trade or a job title in the signature. Trade decides which
+    /// permits this person can legally be added to, and email is how their login claims this
+    /// record — neither is theirs to edit. Written this way, "let people fix their own phone
+    /// number" cannot later drift into "let people change their own trade", because there is
+    /// no parameter through which it could happen.
+    /// </para>
+    /// </summary>
+    public void UpdateContactDetails(string? phoneNumber, Address? address)
+    {
+        // The email is carried over rather than accepted, so it survives untouched.
+        Contact = ContactInfo.Create(Contact.Email, phoneNumber);
+        Address = address;
+    }
+
     public void AssignManager(Guid? managerId)
     {
         if (managerId == Id)
