@@ -1,0 +1,32 @@
+# Normalise line endings so the repository is identical whether it was cloned on
+# Windows, macOS or Linux. Without this, a Windows commit can turn a whole file into
+# a diff of invisible carriage returns and bury the change that actually matters.
+* text=auto eol=lf
+
+# Windows-only tooling that genuinely wants CRLF.
+*.sln       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Shell scripts must keep LF or they will not run.
+*.sh        text eol=lf
+
+# Binary — never touch, never diff.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.pfx       binary
+
+# Generated: collapsed in pull requests, and excluded from language statistics so
+# GitHub reports the languages actually written here.
+client/package-lock.json           linguist-generated=true
+src/PermitToWork.Infrastructure/Migrations/** linguist-generated=true
+postman/*.json                     linguist-generated=true
