@@ -29,11 +29,19 @@ public class EmployeeServiceTests
     // suite, where a real token decides who the caller is.
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
 
+    private readonly IEmailSender _emails = Substitute.For<IEmailSender>();
+
     private readonly EmployeeService _service;
 
     public EmployeeServiceTests()
     {
-        _service = new EmployeeService(_employees, _referenceData, _currentUser, _unitOfWork);
+        _service = new EmployeeService(
+            _employees,
+            _referenceData,
+            _currentUser,
+            _emails,
+            new ApplicationLinks("http://localhost:4200"),
+            _unitOfWork);
 
         // The happy path by default; each test spoils exactly the one thing it is about.
         _referenceData.CompanyExistsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);

@@ -54,6 +54,8 @@ public sealed class EmployeeService(
     IEmployeeRepository employees,
     IReferenceDataRepository referenceData,
     ICurrentUser currentUser,
+    IEmailSender emails,
+    ApplicationLinks links,
     IUnitOfWork unitOfWork) : IEmployeeService
 {
     public Task<PagedResult<EmployeeSummaryDto>> SearchAsync(
@@ -116,7 +118,41 @@ public sealed class EmployeeService(
         employees.Add(employee);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await InviteAsync(employee.Id, cancellationToken);
+
         return employee.Id;
+    }
+
+    /// <summary>
+    /// Tells a new hire their profile exists and asks them to register against it.
+    /// <para>
+    /// Deliberately after the commit, and deliberately not part of it. The record is the
+    /// thing that matters and it is already saved; an unreachable mail server must not undo
+    /// a hire, and there is no honest way to roll one back once the transaction has closed
+    /// anyway. <see cref="IEmailSender"/> is contracted not to throw for a delivery failure,
+    /// so there is no <c>try</c> here — the policy lives in one place rather than at every
+    /// call site that ever sends anything.
+    /// </para>
+    /// <para>
+    /// The real answer for a system that must not lose a message is an outbox table written
+    /// inside the same transaction and drained by a background worker. That is a larger
+    /// piece of machinery than a welcome email justifies, and pretending otherwise would be
+    /// the more dishonest choice than saying so here.
+    /// </para>
+    /// </summary>
+    private async Task InviteAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        // Re-read rather than assembling the message from the request: the company name is
+        // resolved by the same projection every other screen uses, so the email cannot end
+        // up naming the company differently from the profile it is about.
+        if (await employees.GetDetailAsync(employeeId, cancellationToken) is not { } created)
+        {
+            return;
+        }
+
+        await emails.SendAsync(
+            WelcomeEmail.For(created.FullName, created.Email, created.CompanyName, links.LoginUrl),
+            cancellationToken);
     }
 
     public async Task UpdateAsync(Guid id, UpdateEmployeeRequest request, CancellationToken cancellationToken = default)

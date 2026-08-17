@@ -82,7 +82,12 @@
         </button>
       </div>
 
-      @if (mode() === 'register' && !form.controls.password.invalid) {
+      <!--
+        Shown until the error takes its place, not "while the field is valid". An untouched
+        empty box is invalid, so the second reading hides the guidance at exactly the moment
+        it is most useful — before anything has been typed.
+      -->
+      @if (mode() === 'register' && !(form.controls.password.touched && form.controls.password.invalid)) {
         <p class="field-hint">
           Choose your own password — nobody has set one for you. At least 10 characters,
           including a symbol.

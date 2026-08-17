@@ -5,12 +5,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using PermitToWork.Application.Abstractions;
 using PermitToWork.Application.Accounts;
 using PermitToWork.Application.Auditing;
 using PermitToWork.Infrastructure.Auditing;
+using PermitToWork.Infrastructure.Email;
 using PermitToWork.Infrastructure.Identity;
 using PermitToWork.Infrastructure.Persistence;
 using PermitToWork.Infrastructure.Persistence.Repositories;
@@ -67,6 +69,28 @@ public static class DependencyInjection
         services.AddScoped<JwtTokenFactory>();
 
         services.AddSingleton<IFileStorage, LocalFileStorage>();
+
+        // Which sender is registered is decided here, once, from configuration — rather than
+        // by an `if` inside a single sender that would then have to carry both sets of
+        // dependencies and both failure modes. Nothing above this line knows there are two.
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+
+        var email = configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new EmailOptions();
+
+        services.AddSingleton(new ApplicationLinks(email.ApplicationUrl));
+
+        services.AddSingleton<IEmailSender>(serviceProvider =>
+        {
+            IEmailSender sender = string.IsNullOrWhiteSpace(email.SmtpHost)
+                ? ActivatorUtilities.CreateInstance<FileSystemEmailSender>(serviceProvider)
+                : ActivatorUtilities.CreateInstance<SmtpEmailSender>(serviceProvider);
+
+            // Wrapped once, here, so nothing that sends an email has to know what to do when
+            // it fails.
+            return new ForgivingEmailSender(
+                sender,
+                serviceProvider.GetRequiredService<ILogger<ForgivingEmailSender>>());
+        });
 
         services.AddScoped<CounterStore>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();

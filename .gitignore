@@ -31,6 +31,9 @@ yarn-error.log*
 uploads/
 src/PermitToWork.Api/uploads/
 
+## Emails written to disk when no SMTP host is configured
+outbox/
+
 ## Environment & secrets
 .env
 .env.*
