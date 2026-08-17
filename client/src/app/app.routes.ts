@@ -41,6 +41,24 @@ export const routes: Routes = [
     loadComponent: () => import('./features/permits/permit-list').then((m) => m.PermitList),
   },
   {
+    path: 'my-permits',
+    title: 'My permits — Permit To Work',
+    // No role guard: everyone has permits they are on, including administrators.
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/permits/my-permits').then((m) => m.MyPermits),
+  },
+  {
+    path: 'active-permits',
+    title: 'Active permits — Permit To Work',
+    // Asking where a named colleague is working is a different privilege from seeing your
+    // own assignments. The API enforces the same list independently.
+    canActivate: [
+      authGuard,
+      roleGuard(Roles.Administrator, Roles.Supervisor, Roles.SafetyOfficer, Roles.Responsible),
+    ],
+    loadComponent: () => import('./features/permits/crew-search').then((m) => m.CrewSearch),
+  },
+  {
     // Before 'permits/:id', or "new" is read as an id and the detail page 404s.
     path: 'permits/new',
     title: 'Raise a permit — Permit To Work',
@@ -79,6 +97,12 @@ export const routes: Routes = [
     title: 'Audit log — Permit To Work',
     canActivate: [authGuard, roleGuard(Roles.Administrator)],
     loadComponent: () => import('./features/admin/audit-log').then((m) => m.AuditLog),
+  },
+  {
+    path: 'profile',
+    title: 'My profile — Permit To Work',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
   },
   {
     path: 'settings',

@@ -29,6 +29,27 @@
   min-width: 0;
 }
 
+/*
+   The name and avatar are one link to the profile; the theme toggle beside them is not, so
+   the anchor wraps only those two rather than the whole identity panel.
+*/
+.identity-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.identity-link:hover .identity-text strong,
+.identity-link.active .identity-text strong {
+  color: var(--accent-text);
+}
+
 .avatar {
   flex: 0 0 auto;
   width: 32px;

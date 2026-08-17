@@ -2,11 +2,13 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="identity">
-        <span class="avatar">{{ initial() }}</span>
-        <span class="identity-text">
-          <strong [class.accented]="settings.accentUserName()">{{ auth.email() }}</strong>
-          <small>{{ primaryRole() }}</small>
-        </span>
+        <a routerLink="/profile" routerLinkActive="active" class="identity-link" title="Your profile">
+          <span class="avatar">{{ initial() }}</span>
+          <span class="identity-text">
+            <strong [class.accented]="settings.accentUserName()">{{ current.displayName() }}</strong>
+            <small>{{ primaryRole() }}</small>
+          </span>
+        </a>
         <app-theme-toggle />
       </div>
 
@@ -31,6 +33,23 @@
         </a>
 
         <p class="nav-section">Permits</p>
+
+        <a routerLink="/my-permits" routerLinkActive="active">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          My permits
+        </a>
+
+        @if (canSearchCrews()) {
+          <a routerLink="/active-permits" routerLinkActive="active">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            Active permits
+          </a>
+        }
 
         <a routerLink="/permits" routerLinkActive="active">
           <svg viewBox="0 0 24 24" aria-hidden="true">
