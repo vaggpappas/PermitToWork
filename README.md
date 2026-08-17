@@ -132,6 +132,14 @@ dotnet user-secrets set "Jwt:SigningKey" "<a long random string>" -p src/PermitT
 | `Jwt:AccessTokenLifetimeMinutes` | `60` | token lifetime |
 | `Storage:DocumentRoot` | `uploads` | where attachments are written |
 | `PermitExpiry:IntervalMinutes` | `15` | how often elapsed permits are swept |
+| `Email:SmtpHost` | *empty* | empty writes `.eml` files to `Email:Outbox` instead of sending |
+| `Email:ApplicationUrl` | `http://localhost:4200` | the address in the link a new hire receives |
+
+**Email without a mail server.** Creating an employee sends them an invitation to register.
+With no `Email:SmtpHost` configured — the default — each message is written to the `outbox`
+folder beside the API binary as a real `.eml` file you can open in any mail client. Set
+`Email:SmtpHost`, `Email:SmtpUser` and (through user secrets) `Email:SmtpPassword` to send
+for real. Delivery failures are logged and never abort the action that triggered them.
 
 ---
 
