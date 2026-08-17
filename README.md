@@ -339,6 +339,11 @@ dotnet test --filter "FullyQualifiedName~Integration"
 cd client && npm test
 ```
 
+Vitest, no browser. The suite covers the pieces where a mistake is invisible: the JWT claim
+chain in `AuthService`, the route guards, the HTTP interceptor's 401-versus-403 distinction,
+the mapping from RFC 7807 to a sentence, and the employee detail screen end to end against a
+fake backend.
+
 ### Postman
 
 Two collections under [`postman/`](postman/), covering the employee and team endpoints and the
@@ -441,10 +446,10 @@ Stated plainly, because a project that claims to do everything is the less hones
 
 **Known gaps**
 
-- The Angular unit test suite is a placeholder; test coverage lives on the .NET side.
-- `PUT /api/employees/{id}/manager` has no screen behind it yet.
 - A plain Employee has no "my permits" self-view — they see the same list as everyone else in
   their company.
+- The Angular tests cover the core (auth, guards, the interceptor, error mapping) and one
+  screen. The remaining components are exercised by hand rather than by a test.
 
 ---
 
