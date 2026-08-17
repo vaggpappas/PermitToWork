@@ -65,6 +65,59 @@ h1 {
   margin-bottom: 0.95rem;
 }
 
+/*
+   An input with a button sitting inside it. The padding on the input reserves the space so
+   the eye never overlaps what is being typed — a long password would otherwise run under it
+   at exactly the moment somebody wants to read it back.
+*/
+.with-affix {
+  position: relative;
+  display: block;
+}
+
+.with-affix input {
+  padding-right: 2.6rem;
+}
+
+.affix {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  transform: translateY(-50%);
+
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.affix:hover {
+  color: var(--text-muted);
+  background: var(--surface-hover, rgba(127, 127, 127, 0.12));
+}
+
+.affix:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.affix svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 button[type='submit'] {
   width: 100%;
   margin-top: 0.4rem;

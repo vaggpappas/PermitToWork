@@ -352,6 +352,13 @@ select.invalid {
   margin: 0.3rem 0 0;
 }
 
+/* Says what is expected before the user gets it wrong, in the same slot the error uses. */
+.field-hint {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  margin: 0.3rem 0 0;
+}
+
 /* ---------- buttons ---------- */
 
 button {

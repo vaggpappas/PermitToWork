@@ -25,7 +25,7 @@
       @if (mode() === 'login') {
         Sign in to continue.
       } @else {
-        Register against the email address on your employee record.
+        Use the email address on your employee record, and choose a password of your own.
       }
     </p>
 
@@ -49,17 +49,90 @@
 
     <div class="field">
       <label for="password">Password</label>
-      <input
-        id="password"
-        type="password"
-        formControlName="password"
-        [attr.autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'"
-        [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
-      />
+
+      <div class="with-affix">
+        <input
+          id="password"
+          [type]="passwordVisible() ? 'text' : 'password'"
+          formControlName="password"
+          [attr.autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'"
+          [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
+        />
+
+        <button
+          type="button"
+          class="affix"
+          (click)="passwordVisible.set(!passwordVisible())"
+          [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
+          [attr.aria-pressed]="passwordVisible()"
+          [title]="passwordVisible() ? 'Hide password' : 'Show password'"
+        >
+          @if (passwordVisible()) {
+            <!-- Struck through: the eye is open, and the line says what pressing it does. -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.1 9.1 0 0 0 5.39-1.61" />
+              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24M2 2l20 20" />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          }
+        </button>
+      </div>
+
+      @if (mode() === 'register' && !form.controls.password.invalid) {
+        <p class="field-hint">
+          Choose your own password — nobody has set one for you. At least 10 characters,
+          including a symbol.
+        </p>
+      }
       @if (form.controls.password.touched && form.controls.password.invalid) {
         <p class="field-error">At least 10 characters, including a symbol.</p>
       }
     </div>
+
+    @if (mode() === 'register') {
+      <div class="field">
+        <label for="confirmPassword">Re-type your password</label>
+
+        <div class="with-affix">
+          <input
+            id="confirmPassword"
+            [type]="passwordVisible() ? 'text' : 'password'"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+            [class.invalid]="mismatch() && form.controls.confirmPassword.touched"
+          />
+
+          <button
+            type="button"
+            class="affix"
+            (click)="passwordVisible.set(!passwordVisible())"
+            [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
+            [attr.aria-pressed]="passwordVisible()"
+            [title]="passwordVisible() ? 'Hide password' : 'Show password'"
+          >
+            @if (passwordVisible()) {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.1 9.1 0 0 0 5.39-1.61" />
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24M2 2l20 20" />
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            }
+          </button>
+        </div>
+
+        @if (mismatch() && form.controls.confirmPassword.touched) {
+          <p class="field-error">The passwords do not match.</p>
+        }
+      </div>
+    }
 
     <button type="submit" [disabled]="busy()">
       @if (busy()) {
