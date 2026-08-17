@@ -111,4 +111,15 @@ export class EmployeesApi {
   assignAccessRole(id: string, accessRole: AccessRole): Observable<void> {
     return this.http.put<void>(`/api/employees/${id}/access-role`, { accessRole });
   }
+
+  /**
+   * Sets or clears who this person reports to.
+   *
+   * `null` is a value here, not a missing argument — it is how the reporting line is
+   * cleared, and the API is explicit about that. An optional parameter would make
+   * "clear it" and "I forgot to pass it" the same call.
+   */
+  assignManager(id: string, managerId: string | null): Observable<void> {
+    return this.http.put<void>(`/api/employees/${id}/manager`, { managerId });
+  }
 }
