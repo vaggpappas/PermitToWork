@@ -1,14 +1,15 @@
 # Postman collections
 
-Two collections. Both share state through collection variables, so **run each in order**.
+Three collections. Each shares state through collection variables, so **run each in order**.
 
 | File | Covers |
 |---|---|
 | `PermitToWork.postman_collection.json` | Phase 1 — auth, employees, company scoping. 32 requests, 7 folders. |
 | `PermitToWork.Permits.postman_collection.json` | Phase 2 — the permit lifecycle, the certification rule, approval panels, expiry. 9 folders. |
+| `PermitToWork.SelfService.postman_collection.json` | Hiring and registration, what a person may change about themselves, and who may ask where a colleague is working. 5 folders. |
 
-They are independent: the permits collection creates its own people, so it does not need
-the Phase 1 one to have run first.
+They are independent of one another: each creates the people it needs, so none depends on
+another having run first.
 
 ## Before you start
 
@@ -49,6 +50,21 @@ that token on every other request — so you never paste a token by hand.
 
 Folder 5 and folder 9 are the two worth reading. The first is where Phase 1 and Phase 2
 meet; the second is what stops an abandoned permit reading as live work for ever.
+
+## What the self-service collection proves
+
+| Folder | Shows |
+|---|---|
+| 1–2 | Sign in, and capture the reference ids |
+| 3 | An administrator enters the record; the person claims it by registering; a second registration against the same email gets the same message as an unknown one |
+| **4** | **What self-service cannot do.** Posting `tradeId`, `jobTitle`, `firstName` and `accessRole` to the contact endpoint returns 204 and changes none of them — the request type has no field to receive them. A half-filled address is 422; creating an employee is 403 |
+| 5 | The Receiver of a permit sees it without being on the crew; a worker is refused the search-by-person route even for her own id; an administrator is not; an unknown id is an empty page rather than an error |
+
+Folder 4 is the one worth reading. The request that *succeeds* while ignoring most of its
+own body is the point: authorisation done by the shape of a type rather than by a check
+somebody has to remember.
+
+Re-runnable as often as you like — every run generates a fresh email suffix.
 
 ## What each Phase 1 folder proves
 

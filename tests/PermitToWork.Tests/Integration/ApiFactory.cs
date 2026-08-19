@@ -27,15 +27,16 @@ namespace PermitToWork.Tests.Integration;
 /// </summary>
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    // Named SqlServer, not Server: WebApplicationFactory already has a Server property, and
-    // hiding it would be a warning today and a confusing bug the day someone uses it.
-    private const string SqlServer = "Server=localhost,1433;User Id=sa;Password=Your_strong_Passw0rd;TrustServerCertificate=True;Encrypt=False";
+    // Not "Server", which would hide WebApplicationFactory.Server, and not "SqlServer",
+    // which would shadow the SqlServer class this file now calls. A constant that has to
+    // dodge two names in its own scope is worth naming for what it actually holds.
+    private const string Instance = "Server=localhost,1433;User Id=sa;Password=Your_strong_Passw0rd;TrustServerCertificate=True;Encrypt=False";
 
     /// <summary>Its own database, dropped and rebuilt per run, so it can never disturb development data.</summary>
-    public const string ConnectionString = $"{SqlServer};Database=PermitToWork_IntegrationTests";
+    public const string ConnectionString = $"{Instance};Database=PermitToWork_IntegrationTests";
 
     /// <summary>Used only to ask whether SQL Server is running at all.</summary>
-    public const string ProbeConnectionString = $"{SqlServer};Database=master;Connect Timeout=3";
+    public const string ProbeConnectionString = $"{Instance};Database=master;Connect Timeout=3";
 
     public const string AdministratorEmail = "admin@permittowork.local";
     public const string AdministratorPassword = "Admin!23456";
@@ -77,6 +78,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Nothing to prepare if every test in the collection is going to skip. Touching
+        // Services here would build the host, start the expiry worker and have it fail
+        // against a database nobody is going to reach — twenty seconds of alarming log
+        // output in front of a result that is simply "SQL Server is not running".
+        if (!SqlServer.IsRunning)
+        {
+            return;
+        }
+
         await using var scope = Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<PermitToWorkDbContext>();
 
@@ -90,9 +100,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     async Task IAsyncLifetime.DisposeAsync()
     {
-        await using (var scope = Services.CreateAsyncScope())
+        // Same guard, and this is the one that mattered: a throw in collection cleanup is an
+        // error on the run even when no test failed, so without it `dotnet test` reported
+        // "failed: 0" and still exited non-zero.
+        if (SqlServer.IsRunning)
         {
+            await using var scope = Services.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<PermitToWorkDbContext>();
+
             await context.Database.EnsureDeletedAsync();
         }
 
