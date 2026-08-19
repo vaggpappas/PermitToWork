@@ -1,0 +1,716 @@
+{
+  "info": {
+    "_postman_id": "d7c1a9e4-3b62-4f08-a1d5-6c9b2e7f40aa",
+    "name": "Permit To Work — Profile & assignments",
+    "description": "What a person may see and change about themselves, and who is allowed to ask where a colleague is working.\n\nThe interesting requests here are the ones that are *refused*, and the one that succeeds while quietly ignoring most of what was sent to it.\n\n**Before running:** SQL Server up, migrations applied, API running, and SSL certificate verification switched OFF in Postman settings.\n\nSelf-contained — it creates its own employee and its own permit, so it does not depend on the other collections having run.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// A fresh suffix per run, so the collection can be run twice without a 409 on the",
+          "// email. Set once: every request re-runs this script, and regenerating it midway",
+          "// would register one address and then sign in as a different one.",
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  pm.collectionVariables.set('runId', Date.now().toString(36));",
+          "}",
+          "",
+          "const iso = (days) => new Date(Date.now() + days * 86400000).toISOString();",
+          "pm.collectionVariables.set('tomorrow', iso(1));",
+          "pm.collectionVariables.set('inThreeDays', iso(3));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7188" },
+    { "key": "adminToken", "value": "" },
+    { "key": "workerToken", "value": "" },
+    { "key": "runId", "value": "" },
+    { "key": "companyId", "value": "" },
+    { "key": "tradeId", "value": "" },
+    { "key": "coldWorkTypeId", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "facilityId", "value": "" },
+    { "key": "buildingId", "value": "" },
+    { "key": "locationId", "value": "" },
+    { "key": "workerId", "value": "" },
+    { "key": "workerEmail", "value": "" },
+    { "key": "myTradeId", "value": "" },
+    { "key": "myJobTitle", "value": "" },
+    { "key": "permitId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Sign in as an administrator",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@permittowork.local\",\n  \"password\": \"Admin!23456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Reference data",
+      "description": "The ids needed to create a person and a permit.",
+      "item": [
+        {
+          "name": "Companies and trades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/lookups/companies", "host": ["{{baseUrl}}"], "path": ["api", "lookups", "companies"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('companyId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/lookups/trades", "host": ["{{baseUrl}}"], "path": ["api", "lookups", "trades"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tradeId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Permit types and categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/permit-types", "host": ["{{baseUrl}}"], "path": ["api", "permit-types"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const coldWork = pm.response.json().find(t => t.code === 'CW');",
+                  "",
+                  "// Cold Work on purpose: it requires no certification, so this collection can",
+                  "// demonstrate assignment without dragging the certification rule in as well.",
+                  "pm.test('Cold Work demands no certificate', () =>",
+                  "  pm.expect(coldWork.requiredCertifications).to.be.empty);",
+                  "",
+                  "pm.collectionVariables.set('coldWorkTypeId', coldWork.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/categories", "host": ["{{baseUrl}}"], "path": ["api", "categories"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('categoryId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Facilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/lookups/facilities", "host": ["{{baseUrl}}"], "path": ["api", "lookups", "facilities"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('facilityId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buildings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/facilities/{{facilityId}}/buildings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lookups", "facilities", "{{facilityId}}", "buildings"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('buildingId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lookups/buildings/{{buildingId}}/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lookups", "buildings", "{{buildingId}}", "locations"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('locationId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Hiring somebody",
+      "description": "An administrator enters the record; the person then claims it. Nobody invents their own employer, which is what the company scoping rests on.",
+      "item": [
+        {
+          "name": "Create the employee record",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Marta\",\n  \"lastName\": \"Nowak\",\n  \"email\": \"marta.{{runId}}@example.test\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"Pipe Fitter\",\n  \"hireDate\": \"2023-02-01\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('workerId', pm.response.json().id);",
+                  "pm.collectionVariables.set('workerEmail', 'marta.' + pm.collectionVariables.get('runId') + '@example.test');",
+                  "",
+                  "// An invitation has just been written to the API's outbox folder as a .eml",
+                  "// file — or sent, if an SMTP host is configured. Nothing to assert over HTTP:",
+                  "// a mail server being unreachable must never fail a hire, so the endpoint",
+                  "// answers 201 either way. Check bin/Debug/net10.0/outbox/ to see it."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She has no login yet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{workerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{workerId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const employee = pm.response.json();",
+                  "",
+                  "pm.test('the record exists but cannot sign in', () =>",
+                  "  pm.expect(employee.hasAccount).to.eql(false));",
+                  "",
+                  "pm.test('everyone starts read-only', () =>",
+                  "  pm.expect(employee.accessRole).to.eql('Employee'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She registers against her own email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{workerEmail}}\",\n  \"password\": \"Worker!23456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('workerToken', pm.response.json().accessToken);",
+                  "",
+                  "// Registration claims the record. It grants nothing: the role came from",
+                  "// whoever created the employee, and attaching a login does not change it."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registering twice is refused",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{workerEmail}}\",\n  \"password\": \"Different!9876\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('the same message as for an unknown email', () =>",
+                  "  pm.expect(pm.response.text()).to.include('No employee record is awaiting registration'));",
+                  "",
+                  "// Identical wording for 'already taken', 'no such employee' and 'never heard",
+                  "// of you'. Three different messages would turn this into a way to find out",
+                  "// who works here, one address at a time."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Her own profile",
+      "description": "What a person may change about themselves, and what the request has no field to carry.",
+      "item": [
+        {
+          "name": "She reads her own record",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/employees/me", "host": ["{{baseUrl}}"], "path": ["api", "employees", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const me = pm.response.json();",
+                  "",
+                  "pm.test('no id was sent — the token said who she is', () =>",
+                  "  pm.expect(me.email).to.eql(pm.collectionVariables.get('workerEmail')));",
+                  "",
+                  "pm.collectionVariables.set('myTradeId', me.tradeId);",
+                  "pm.collectionVariables.set('myJobTitle', me.jobTitle);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She corrects her phone and address",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+30 210 555 0134\",\n  \"address\": {\n    \"street\": \"12 Ermou\",\n    \"city\": \"Athens\",\n    \"postalCode\": \"10563\",\n    \"country\": \"Greece\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/me/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "me", "contact"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trying to promote herself changes nothing",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+30 210 555 0199\",\n  \"tradeId\": \"00000000-0000-0000-0000-000000000001\",\n  \"jobTitle\": \"Site Director\",\n  \"firstName\": \"Promoted\",\n  \"accessRole\": \"Administrator\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/me/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "me", "contact"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content — nothing was rejected', () => pm.response.to.have.status(204));",
+                  "",
+                  "// Note that this succeeds. UpdateMyContactRequest has two fields, so the rest",
+                  "// simply do not bind — there is no check here to forget, and no error to",
+                  "// report. The next request is where it matters."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Her trade and role are untouched",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/employees/me", "host": ["{{baseUrl}}"], "path": ["api", "employees", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const me = pm.response.json();",
+                  "",
+                  "pm.test('the contact details did change', () => {",
+                  "  pm.expect(me.phoneNumber).to.eql('+30 210 555 0199');",
+                  "  pm.expect(me.address.city).to.eql('Athens');",
+                  "});",
+                  "",
+                  "// The trade decides which permits she may legally be added to. If this could",
+                  "// be self-edited, the certification rule could be walked around from an",
+                  "// entirely different direction.",
+                  "pm.test('the trade is the one an administrator gave her', () =>",
+                  "  pm.expect(me.tradeId).to.eql(pm.collectionVariables.get('myTradeId')));",
+                  "",
+                  "pm.test('the job title is unchanged', () =>",
+                  "  pm.expect(me.jobTitle).to.eql(pm.collectionVariables.get('myJobTitle')));",
+                  "",
+                  "pm.test('she is still an ordinary employee', () =>",
+                  "  pm.expect(me.accessRole).to.eql('Employee'));",
+                  "",
+                  "pm.test('her name is her own', () =>",
+                  "  pm.expect(me.firstName).to.eql('Marta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A half-filled address is refused",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": {\n    \"street\": \"12 Ermou\",\n    \"city\": \"\",\n    \"postalCode\": \"\",\n    \"country\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/me/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "me", "contact"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Content', () => pm.response.to.have.status(422));",
+                  "",
+                  "// All four parts or none. A half-filled address looks like data and is not,",
+                  "// and the Address value object refuses to exist in that state."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She still cannot edit anybody else",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Someone\",\n  \"lastName\": \"New\",\n  \"email\": \"sneaky.{{runId}}@example.test\",\n  \"companyId\": \"{{companyId}}\",\n  \"tradeId\": \"{{tradeId}}\",\n  \"jobTitle\": \"Fitter\",\n  \"hireDate\": \"2024-01-05\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "",
+                  "// 403, not 401. She is signed in perfectly well; she simply may not do this.",
+                  "// The distinction matters — the browser signs a user out on 401 and would",
+                  "// otherwise log her out for pressing a button she should not have seen."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Where is she working",
+      "description": "The permits a person is on — hers to see, and a supervisory question when it is about somebody else.",
+      "item": [
+        {
+          "name": "A permit is raised with her as Receiver",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permitTypeId\": \"{{coldWorkTypeId}}\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"workDescription\": \"Replace the gasket on the transfer pump.\",\n  \"locationId\": \"{{locationId}}\",\n  \"validFrom\": \"{{tomorrow}}\",\n  \"validTo\": \"{{inThreeDays}}\",\n  \"receiverId\": \"{{workerId}}\",\n  \"project\": \"Unit 3 Turnaround\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/permits", "host": ["{{baseUrl}}"], "path": ["api", "permits"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('permitId', pm.response.json().id);",
+                  "",
+                  "// She is never added to the crew. The Receiver answers for the work being",
+                  "// done properly on site, and a list that omitted the permits she is",
+                  "// accountable for would be worse than no list at all."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She sees it in her own permits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits?assignedToMe=true&order=Schedule",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits"],
+              "query": [
+                { "key": "assignedToMe", "value": "true" },
+                { "key": "order", "value": "Schedule" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().items.map(p => p.id);",
+                  "",
+                  "pm.test('the permit she receives is hers', () =>",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('permitId')));",
+                  "",
+                  "// assignedToMe is a boolean, not an employee id. It resolves to the caller on",
+                  "// the server, so there is no field on this request through which it could be",
+                  "// pointed at a colleague."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "She may not ask about a colleague",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{workerToken}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/assigned-to/{{workerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "assigned-to", "{{workerId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "",
+                  "// Refused even though the id happens to be her own. Naming a person is a",
+                  "// supervisory act, and the route is guarded by role rather than by comparing",
+                  "// the id to the caller — a check that would have to be right every time",
+                  "// somebody edits this endpoint."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An administrator may",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/assigned-to/{{workerId}}?order=Schedule",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "assigned-to", "{{workerId}}"],
+              "query": [{ "key": "order", "value": "Schedule" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().items.map(p => p.id);",
+                  "",
+                  "pm.test('the permit she receives is listed against her', () =>",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('permitId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Somebody uninvolved has nothing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permits/assigned-to/00000000-0000-0000-0000-000000000009",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permits", "assigned-to", "00000000-0000-0000-0000-000000000009"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('an empty page, not an error', () =>",
+                  "  pm.expect(pm.response.json().items).to.be.empty);",
+                  "",
+                  "// An unknown person and a person on nothing are the same answer on purpose.",
+                  "// Distinguishing them would let anyone with this role test employee ids one",
+                  "// at a time to find out who exists."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
