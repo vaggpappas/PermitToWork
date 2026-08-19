@@ -159,6 +159,13 @@ date range. Workers and equipment are attached, documents may be uploaded, and i
 submitted to the facility's approval panel. Approvals, rejections, suspensions and closure are
 all recorded as events on the permit, so its history is readable end to end.
 
+**Your own work.** Everyone gets a *My permits* screen: the jobs they are on as crew or as
+Receiver, live work first and then whatever starts soonest. Supervisors and safety officers
+additionally get *Active permits*, which asks the question the other way round — name a person,
+see what they are working under right now. Everyone also has a profile page showing their
+certifications and expiry dates, where they can correct their phone number and address but
+nothing that decides what work they are allowed to do.
+
 **Administration.** Reference data (companies, sites, trades, certification types, categories,
 permit types) is maintained through the UI. A full audit trail of every insert, update and
 delete is available to administrators only.
@@ -354,10 +361,11 @@ fake backend.
 
 ### Postman
 
-Two collections under [`postman/`](postman/), covering the employee and team endpoints and the
-full permit flow, with test scripts that assert status codes and chain ids between requests.
-Import both, run the login request first — it stores the token in a collection variable — then
-run the folders in order. See [`postman/README.md`](postman/README.md).
+Three collections under [`postman/`](postman/): the employee and team endpoints, the full permit
+flow, and hiring plus self-service. Their test scripts assert status codes and chain ids between
+requests, so a whole collection runs unattended. Import them, run the login request first — it
+stores the token in a collection variable — then run the folders in order. See
+[`postman/README.md`](postman/README.md).
 
 ---
 
@@ -370,8 +378,10 @@ Swagger UI at `/swagger` documents every endpoint, with the schemas and a workin
 |---|---|
 | **Auth** | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
 | **Employees** | list, get, create, update, access role, manager, suspend / reinstate / terminate, certifications |
+| **Self-service** | `GET /api/employees/me`, `PUT /api/employees/me/contact` — your own record, contact details only |
 | **Teams** | list, get, create, update, members, member role, disband, `GET /api/employees/{id}/teams` |
 | **Permits** | list, get, create, update, workers, equipment, documents, `submit`, `approve`, `reject`, `suspend`, `resume`, `close`, `cancel` |
+| **Assignments** | `?assignedToMe=true` on the list; `GET /api/permits/assigned-to/{employeeId}` for a named colleague, which needs a role |
 | **Approval panels** | `GET/POST /api/facilities/{id}/approvers`, set decisive, remove |
 | **Lookups** | companies, trades, certification types, facilities, buildings, locations, permit types, categories |
 | **Administration** | `/api/admin/*` reference data, `/api/audit` audit trail |
