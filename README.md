@@ -57,7 +57,18 @@ docker compose up -d sqlserver
 SQL Server 2022 comes up on `localhost:1433` with a named volume, so data survives a restart.
 The compose file defines a healthcheck; give it about thirty seconds on a cold start.
 
-### 2. Create the schema
+### 2. Restore and build
+
+```bash
+dotnet build PermitToWork.sln
+```
+
+First on a fresh clone, and not just for reassurance: the migration step below reads the
+project's NuGet assets file, which does not exist until something has restored. Running
+`dotnet ef` before this fails with `NETSDK1004: Assets file … not found`, which reads like a
+broken project rather than a missing step.
+
+### 3. Create the schema
 
 The database is generated from the model — six EF Core migrations, `InitialSchema` through
 `AuditLog`. Apply them once:
@@ -68,7 +79,7 @@ dotnet ef database update -p src/PermitToWork.Infrastructure -s src/PermitToWork
 
 > If `dotnet ef` is not installed: `dotnet tool install --global dotnet-ef`
 
-### 3. Run the API
+### 4. Run the API
 
 ```bash
 dotnet run --project src/PermitToWork.Api
@@ -80,7 +91,7 @@ checks before it writes — so it is safe on every run.
 
 Swagger UI is at **<https://localhost:7188/swagger>** (the root redirects there).
 
-### 4. Run the client
+### 5. Run the client
 
 ```bash
 cd client
@@ -91,7 +102,7 @@ npm start
 The application opens at **<http://localhost:4200>**. The dev server proxies `/api` to
 `https://localhost:7188`, so there is nothing to configure.
 
-### 5. Sign in
+### 6. Sign in
 
 | Email | Password | Role |
 |---|---|---|
